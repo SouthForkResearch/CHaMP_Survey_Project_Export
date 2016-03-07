@@ -22,6 +22,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CHaMP_Data.py" />
     <Compile Include="CHaMP_Survey_Data_Export_Tool.py" />
   </ItemGroup>
   <PropertyGroup>
