@@ -8,10 +8,16 @@
     <StartupFile>CHaMP_Survey_Data_Export_Tool.py</StartupFile>
     <SearchPath>
     </SearchPath>
-    <WorkingDirectory>.</WorkingDirectory>
+    <WorkingDirectory>D:\Development\champ-survey-data-export-tool\CHaMP Survey Data Export Tool\</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>CHaMP Survey Data Export Tool</Name>
     <RootNamespace>CHaMP Survey Data Export Tool</RootNamespace>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <CommandLineArguments>"C:\GIS\Harold\CBW05583-013882-20150622_2014.gdb" "C:\GIS\Harold\TestOutputFull4"</CommandLineArguments>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <InterpreterId>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -24,6 +30,9 @@
   <ItemGroup>
     <Compile Include="CHaMP_Data.py" />
     <Compile Include="CHaMP_Survey_Data_Export_Tool.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{9a7a9026-48c1-4688-9d5d-e5699d47d074}\2.7" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
