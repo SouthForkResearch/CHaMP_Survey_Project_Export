@@ -280,7 +280,7 @@ class GISFile():
 ## Fields ## 
 class FieldDescription(GISField):
     nameFull = "DESCRIPTION"
-    nameShort = "Desc"
+    nameShort = "DescCode"
     lengthString = 6
 
     def __init__(self,codeList):
@@ -375,20 +375,6 @@ class FieldStation(GISField):
     def __init__(self):
         GISField.__init__(self,self.nameFull,self.nameShort,"STRING")
 
-class FieldCPType(GISField):
-    nameFull = "Type"
-    nameShort = "Type"
-
-    def __init__(self):
-        GISField.__init__(self,self.nameFull,self.nameShort,"STRING")
-
-class FieldCPSource(GISField):
-    nameFull = "Source"
-    nameShort = "Source"
-
-    def __init__(self):
-        GISField.__init__(self,self.nameFull,self.nameShort,"STRING")
-
 class FieldErrorType(GISField):
     nameFull = "ErrorType"
     nameShort = "ErrorType"
@@ -412,8 +398,8 @@ class Control_Points(GISVector):
     fieldPointQuality = FieldPointQuality()
     fieldStation = FieldStation()
     fieldPointNumber = FieldPointNumber()
-    fieldCPType = FieldCPType()
-    fieldCPSource = FieldCPSource()
+    fieldCPType = GISField("Type","Type","STRING")
+    fieldCPSource = GISField("Source","Source","STRING")
 
     def __init__(self,GDBProjected):
         GISVector.__init__(self,GDBProjected)
@@ -427,8 +413,6 @@ class Control_Points(GISVector):
         self.addField(self.fieldCPSource)
 
 class Topo_Points(GISVector):
-    """
-    """
     Publish = True
     ExportToGIS = True
     Name = "Topo_Points"
@@ -457,7 +441,11 @@ class Bankfull_Polygon(GISVector):
     Name = "Bankfull"
     Required = True
 
-    FieldExtentType
+    fieldExtent = FieldExtentType()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldExtent)
 
 class Bankfull_Centerline(GISVector):
     Publish = True
@@ -465,8 +453,13 @@ class Bankfull_Centerline(GISVector):
     Name = "BankfullCL"
     Required = True
 
-    FieldChannel
-    FieldCLID
+    fieldChannel = FieldChannel()
+    fieldCLID = FieldCLID()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannel)
+        self.addField(self.fieldCLID)
 
 class Bankfull_CrossSections(GISVector):
     Publish = True
@@ -474,8 +467,13 @@ class Bankfull_CrossSections(GISVector):
     Name = "BankfullXS"
     Required = True
 
-    FieldChannel
-    FieldIsValid
+    fieldChannel = FieldChannel()
+    fieldIsValid = FieldIsValid()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannel)
+        self.addField(self.fieldIsValid)
 
 class Bankfull_Islands(GISVector):
     Publish = True
@@ -483,8 +481,13 @@ class Bankfull_Islands(GISVector):
     Name = "BIslands"
     Required = True
 
-    FieldIsValid
-    FieldQualifying
+    fieldIsValid = FieldIsValid()
+    fieldQualifying = FieldQualifying()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldIsValid)
+        self.addField(self.fieldQualifying)
 
 class Benchmarks(GISVector):
     Publish = True
@@ -497,9 +500,15 @@ class Breaklines(GISVector):
     ExportToGIS = True
     Name = "Breaklines"
     Required = True
+    lineCodes = []
 
-    FieldDescription
-    FieldLineType
+    fieldDescription = FieldDescription(lineCodes)
+    fieldLineTypes = FieldLineType()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addfield(self.fieldDescription)
+        self.addField(self.fieldLineTypes)
 
 class Channel_Units(GISVector):
     Publish = True
@@ -507,7 +516,11 @@ class Channel_Units(GISVector):
     Name = "Channel_Units"
     Required = True
     
-    FieldChannelUnitNumber
+    fieldChannelUnitNumber = FieldChannelUnitNumber()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannelUnitNumber)
 
 class Channel_Units_Crew(GISVector):
     Publish = True
@@ -515,7 +528,11 @@ class Channel_Units_Crew(GISVector):
     Name = "Channel_Units_Field"
     Required = True
 
-    FieldChannelUnitNumber
+    fieldChannelUnitNumber = FieldChannelUnitNumber()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannelUnitNumber)
 
 class EdgeOfWater_Points(GISVector):
     Publish = True
@@ -544,26 +561,44 @@ class Error_Lines(GISVector):
     ExportToGIS = True
     Name = "Error_Lines"
     Required = False
+    listErrorCodes = ["*"]
     
-    FieldDescription
-    FieldLineType
-    FieldErrorType
+    fieldDescription = FieldDescription(listErrorCodes)
+    fieldLineType = FieldLineType()
+    fieldErrorType = FieldErrorType()
     # FieldOriginalLocation
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldDescription)
+        self.addField(self.fieldLineType)
+        self.addField(self.fieldErrorType)
 
 class Error_Points(GISVector):
     Publish = True
     ExportToGIS = True
     Name = "Error_Points"
     Required = True
+    listErrorCodes = ["*"]
 
-    FieldDescription
-    FieldVDE
-    FieldHDE
-    FieldPointQuality
-    FieldStation
-    FieldPointNumber
-    FieldErrorType
+    fieldDescription = FieldDescription(listErrorCodes)
+    fieldVDE = FieldVDE()
+    fieldHDE = FieldHDE()
+    fieldPointQuality = FieldPointQuality()
+    fieldStation = FieldStation()
+    fieldPointNumber = FieldPointNumber()
+    fieldErrorType = FieldErrorType()
     # FieldOriginalLocation
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldDescription)
+        self.addField(self.fieldVDE)
+        self.addField(self.fieldHDE)
+        self.addField(self.fieldPointQuality)
+        self.addField(self.fieldPointNumber)
+        self.addField(self.fieldErrorType)
+        self.addField(self.fieldStation)
 
 class Stream_Features(GISVector):
     Publish = True
@@ -572,7 +607,7 @@ class Stream_Features(GISVector):
     Required = True
 
     fieldDescription = FieldDescription([])
-    filedVDE = FieldVDE()
+    fieldVDE = FieldVDE()
     fieldHDE = FieldHDE()
     fieldPointQuality = FieldPointQuality()
     fieldStation = FieldStation()
@@ -599,8 +634,13 @@ class Thalweg(GISVector):
     Name = "Thalweg"
     Required = True
 
-    FieldPoolWt = GISField("PoolWt","PoolWt","LONG")
-    FieldSmoothT = GISField("SmoothT","SmoothT","LONG")
+    fieldPoolWt = GISField("PoolWt","PoolWt","LONG")
+    fieldSmoothT = GISField("SmoothT","SmoothT","LONG")
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldPoolWt)
+        self.addField(self.fieldSmoothT)
 
 class Wetted_Centerline(GISVector):
     Publish = True
@@ -608,8 +648,13 @@ class Wetted_Centerline(GISVector):
     Name = "CenterLine"
     Required = True
 
-    FieldChannel
-    FieldCLID
+    fieldChannel = FieldChannel()
+    fieldCLID = FieldCLID()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannel)
+        self.addField(self.fieldCLID)
 
 class Wetted_Extent(GISVector):
     Publish = True
@@ -617,7 +662,11 @@ class Wetted_Extent(GISVector):
     Name = "WaterExtent"
     Required = True
 
-    FieldExtentType
+    fieldExtentType = FieldExtentType()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldExtentType)
 
 class Wetted_CrossSections(GISVector):
     Publish = True
@@ -625,8 +674,13 @@ class Wetted_CrossSections(GISVector):
     Name = "WettedXS"
     Required = True
 
-    FieldChannel
-    FieldIsValid
+    fieldChannel = FieldChannel()
+    fieldIsValid = FieldIsValid()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldChannel)
+        self.addField(self.fieldIsValid)
 
 class Wetted_Islands(GISVector):
     Publish = True
@@ -634,8 +688,13 @@ class Wetted_Islands(GISVector):
     Name = "WIslands"
     Required = True
 
-    FieldIsValid
-    FieldQualifying
+    fieldIsValid = FieldIsValid()
+    fieldQualifying = FieldQualifying()
+
+    def __init__(self,GDBProjected):
+        GISVector.__init__(self,GDBProjected)
+        self.addField(self.fieldIsValid)
+        self.addField(self.fieldQualifying)
 
 ## Raster Datasets ## 
 class DEM(GISRaster):
