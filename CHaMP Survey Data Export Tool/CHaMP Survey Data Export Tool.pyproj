@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>50ac0d9d-22df-4dea-85f6-039d875c7220</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>CHaMP_Survey_Data_Export_Tool.py</StartupFile>
+    <StartupFile>BatchExport.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>D:\Development\champ-survey-data-export-tool\CHaMP Survey Data Export Tool\</WorkingDirectory>
@@ -28,6 +28,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="BatchExport.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="CHaMP_Data.py" />
     <Compile Include="CHaMP_Survey_Data_Export_Tool.py" />
   </ItemGroup>
