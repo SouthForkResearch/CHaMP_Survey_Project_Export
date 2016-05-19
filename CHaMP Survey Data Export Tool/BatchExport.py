@@ -4,6 +4,8 @@ import os
 import glob
 import sys
 import traceback
+import CHaMP_Data
+import arcpy
 
 def run(directorySource,directoryOutput):
         # Headers for Log
@@ -18,7 +20,7 @@ def run(directorySource,directoryOutput):
             listsurveyGDB = glob.glob(directoryCurrent + "\\*.gdb")
             #liststationXLSX = "null" ##glob.glob(directoryCurrent + '\\*.xls')
             if len(listsurveyGDB) == 1: ##and len(liststationXLSX) == 1:
-                SurveyGDB = CHaMP.SurveyGeodatabase(listsurveyGDB[0])
+                SurveyGDB = CHaMP_Data.SurveyGeodatabase(listsurveyGDB[0])
                 #wseTIN = glob.glob(directoryCurrent + "\\wsetin*")[0]
                 #stationXLSX = "null" ##liststationXLSX[0] + "\\Sheet1$"
 
@@ -30,17 +32,17 @@ def run(directorySource,directoryOutput):
                     printer("   " + site + ": START",directoryOutput)
                     
                     #HydroModelInputs_Numpy.main(str(SurveyGDB.filename),str(wseTIN),str(outputFolder),pathTemp)
-                    CHaMP_Survey_Data_Export_Tool.main(SurveyGDB,outputFolder)
+                    CHaMP_Survey_Data_Export_Tool.main(SurveyGDB.filename,outputFolder)
                     printer("   " + site + ": COMPLETE",directoryOutput)
                 except:
                     printer("   " + site + ": EXCEPTION",directoryOutput)
                     # Get the geoprocessing error messages
-                    #msgs = arcpy.GetMessage(0)
-                    #msgs += arcpy.GetMessages(2)
+                    msgs = arcpy.GetMessage(0)
+                    msgs += arcpy.GetMessages(2)
                     # Return gp error messages for use with a script tool
                     #arcpy.AddError(msgs)
                     # Print gp error messages for use in Python/PythonWin
-                    #printer("***" + msgs,directoryOutput)
+                    printer("***" + msgs,directoryOutput)
                     # Get the traceback object
                     tb = sys.exc_info()[2]
                     tbinfo = traceback.format_tb(tb)[0]
@@ -70,7 +72,7 @@ if __name__ == '__main__':
     #inputTempDirectory = sys.argv[3]
     #inputUseNumpy = sys.argv[4]
 
-    main(inputSourceDirectory,inputOutputDirectory)#,inputTempDirectory)
+    run(inputSourceDirectory,inputOutputDirectory)#,inputTempDirectory)
 
 
 
