@@ -63,7 +63,7 @@ class SurveyGeodatabase():
         self.Bankfull_CrossSections = Bankfull_CrossSections(self.projected)
         self.Bankfull_Islands = Bankfull_Islands(self.projected)
         self.Benchmarks = Benchmarks(self.projected)
-        self.Breaklines = Benchmarks(self.projected)
+        self.Breaklines = Breaklines(self.projected)
         self.Channel_Units = Channel_Units(self.projected)
         self.Channel_Units_Crew = Channel_Units_Crew(self.projected)
         self.EdgeOfWater_Points = EdgeOfWater_Points(self.projected)
@@ -257,7 +257,8 @@ class GISVector():
     def getFieldMapping(self):
         fieldMappings = arcpy.FieldMappings()
         for field in self.listFields:
-            fieldMappings.addFieldMap(field.getFieldMap(self.filename))
+            if len(arcpy.ListFields(self.filename,field)) == 0 :
+                fieldMappings.addFieldMap(field.getFieldMap(self.filename))
         return fieldMappings
     
     def validateExists(self):
@@ -507,7 +508,7 @@ class Breaklines(GISVector):
 
     def __init__(self,GDBProjected):
         GISVector.__init__(self,GDBProjected)
-        self.addfield(self.fieldDescription)
+        self.addField(self.fieldDescription)
         self.addField(self.fieldLineTypes)
 
 class Channel_Units(GISVector):
