@@ -109,6 +109,7 @@ class SurveyGeodatabase():
         self.Assoc3DPQ = Assoc3DPQ(self.filename)
         self.AssocD50 = AssocD50(self.filename)
         self.ErrSurface = ErrSurface(self.filename)
+        self.AssocRough = AssocRough(self.filename)
         
     def getDatasets(self):
         listDatasets = [self.Control_Points,
@@ -139,6 +140,8 @@ class SurveyGeodatabase():
                         self.AssocIErr,
                         self.AssocPDensity,
                         self.AssocSlope,
+						self.AssocRough,
+						self.ErrSurface,
                         self.WSEDEM,
                         self.WaterDepth]
         for dataset in listDatasets:
@@ -726,7 +729,7 @@ class DetrendedDEM(GISRaster):
         GISRaster.__init__(self,path+ "\\" + self.name)
 
 class WaterDepth(GISRaster):
-    name = "WaterDepth"
+    name = "Water_Depth"
     Publish = True
     ExportToGIS = True
     Required = True
@@ -787,6 +790,15 @@ class AssocD50(GISRaster):
 
     def __init__(self,path):
         GISRaster.__init__(self,path+ "\\" + self.name)
+
+class AssocRough(GISRaster):
+    name = "AssocRough"
+    Publish = True
+    ExportToGIS = True
+    Required = True
+
+    def __init__(self,path):
+        GISRaster.__init__(self,path + "\\" + self.name)
 
 class ErrSurface(GISRaster):
     name = "ErrSurface"
