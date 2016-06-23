@@ -111,8 +111,7 @@ class SurveyGeodatabase():
         self.ErrSurface = ErrSurface(self.filename)
         self.AssocRough = AssocRough(self.filename)
         
-    def getDatasets(self):
-        listDatasets = [self.Control_Points,
+        self.listDatasets = [self.Control_Points,
                         self.Topo_Points,
                         self.Bankfull_Polygon,
                         self.Bankfull_Centerline,
@@ -144,7 +143,9 @@ class SurveyGeodatabase():
 						self.ErrSurface,
                         self.WSEDEM,
                         self.WaterDepth]
-        for dataset in listDatasets:
+
+    def getDatasets(self):
+        for dataset in self.listDatasets:
             yield dataset
 
     def getRasterDatasets(self):
