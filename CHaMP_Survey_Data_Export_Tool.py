@@ -9,6 +9,7 @@ import sys
 import time
 import arcpy
 import CHaMP_Data
+import sfr_metadata as Metadata
 
 
 def main(strInputSurveyGDB,strOutputPath):
@@ -17,7 +18,7 @@ def main(strInputSurveyGDB,strOutputPath):
     print "Input SurveyGDB: " + str(strInputSurveyGDB)
     print "Output Path: " + str(strOutputPath)
 
-    reload(CHaMP_Data)
+    mWriter = Metadata.Metadata.
     SurveyGDB = CHaMP_Data.SurveyGeodatabase(strInputSurveyGDB)
     
     listTables = []

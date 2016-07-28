@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "CHaMP Survey Data Export Tool", "CHaMP Survey Data Export Tool.pyproj", "{50AC0D9D-22DF-4DEA-85F6-039D875C7220}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "champ-survey-data-export-tool", "champ-survey-data-export-tool.pyproj", "{1424C3FB-2403-40FB-B759-1D3357785DE7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +11,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{50AC0D9D-22DF-4DEA-85F6-039D875C7220}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{50AC0D9D-22DF-4DEA-85F6-039D875C7220}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1424C3FB-2403-40FB-B759-1D3357785DE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1424C3FB-2403-40FB-B759-1D3357785DE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
