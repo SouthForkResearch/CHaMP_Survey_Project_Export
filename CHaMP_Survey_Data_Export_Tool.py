@@ -11,6 +11,8 @@ import arcpy
 import CHaMP_Data
 import sfr_metadata as Metadata
 
+toolName = "CHaMP Survey Data Export Tool"
+toolVersion = "1.1"
 
 def main(strInputSurveyGDB,strOutputPath):
     start = time.time()
@@ -18,7 +20,11 @@ def main(strInputSurveyGDB,strOutputPath):
     print "Input SurveyGDB: " + str(strInputSurveyGDB)
     print "Output Path: " + str(strOutputPath)
 
-    mWriter = Metadata.Metadata.
+    mWriter = Metadata.Metadata.MetadataWriter(toolName,toolVersion)
+    mWriter.createRun()
+    mWriter.currentRun.addParameter("Input Survey GDB",strInputSurveyGDB)
+    mWriter.currentRun.addOutput("Output Path",strOutputPath)
+
     SurveyGDB = CHaMP_Data.SurveyGeodatabase(strInputSurveyGDB)
     
     listTables = []
@@ -48,13 +54,15 @@ def main(strInputSurveyGDB,strOutputPath):
         try:
             if os.path.isfile(file_path):
                 print "Deleting existing file: " + str(file_path)
+                mWriter.currentRun.addMessage("Info","Deleting existing file: " + str(file_path))
                 os.unlink(file_path)
             elif os.path.isdir(file_path): 
                 shutil.rmtree(file_path)
                 print "Deleting existing directory: " + str(file_path)
-        except Exception, e:
+                mWriter.currentRun.addMessage("Info","Deleting existing directory: " + str(file_path))
+        except Exception as e:
             print e
-    ### Write to Log File
+            mWriter.currentRun.addMessage("Exception",str(e))
 
     ## Rasters
     for raster in SurveyGDB.getRasterDatasets():
@@ -69,8 +77,9 @@ def main(strInputSurveyGDB,strOutputPath):
     ## Tables
     ###Check exist
     ###Write to Log
+                mWriter.currentRun.addMessage("Info","Exported: " + str(raster.filename))
     
-
+    ## Vector Datasets
     for vectorFC in SurveyGDB.getVectorDatasets():
         valstart = time.time()
         if vectorFC.validateExists():
@@ -78,18 +87,32 @@ def main(strInputSurveyGDB,strOutputPath):
             start = time.time()
             vectorFC.exportToShapeFile(strOutputPath)
             print "Exported: {0} in {1}s".format(str(vectorFC.filename), int(time.time() - start))
+            mWriter.currentRun.addMessage("Info","Exported: " + str(vectorFC.filename))
         else:
             print str(vectorFC.filename) + " does not exist."
+            mWriter.currentRun.addMessage("Warning",str(vectorFC.filename) + " does not exist.")
     
+    ## Tables
     for table in SurveyGDB.getTables():
         if table.validateExists():
             table.exportTableToXML()
+            print "Info","Exported: " + str(table.filename)
+            mWriter.currentRun.addMessage("Info","Exported: " + str(table.filename))
         else:
             print str(table.filename) + " does not exist."
+            mWriter.currentRun.addMessage("Warning",str(table.filename) + " does not exist.")
 
     print "Export Complete  at " + str(time.asctime())
     totaltime = ( time.time() - start )
     print "Total Time: {0}s".format(totaltime)
+    print "Export Complete  at " + str(time.asctime())        
+    
+    #TODO: find and write the surveyGDB Version?
+    
+    
+    mWriter.finalizeRun()
+    mWriter.writeMetadataFile(strOutputPath + "\\ExportMetadata.xml")
+            
     return
 
 if __name__ == "__main__":

@@ -27,7 +27,6 @@
     <Compile Include="sfr_metadata\Metadata.py" />
     <Compile Include="sfr_metadata\test.py" />
     <Compile Include="sfr_metadata\__init__.py" />
-    <Compile Include="surveygdb.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="sfr_metadata" />
