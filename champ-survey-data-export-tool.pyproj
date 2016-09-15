@@ -25,7 +25,6 @@
     <Compile Include="CHaMP_Data.py" />
     <Compile Include="CHaMP_Survey_Data_Export_Tool.py" />
     <Compile Include="sfr_metadata\Metadata.py" />
-    <Compile Include="sfr_metadata\test.py" />
     <Compile Include="sfr_metadata\__init__.py" />
   </ItemGroup>
   <ItemGroup>

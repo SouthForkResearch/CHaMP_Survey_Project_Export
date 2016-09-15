@@ -7,12 +7,11 @@ import os
 import shutil
 import sys
 import time
-import arcpy
 import CHaMP_Data
 import sfr_metadata as Metadata
 
 toolName = "CHaMP Survey Data Export Tool"
-toolVersion = "1.1"
+toolVersion = "1.2"
 
 def main(strInputSurveyGDB,strOutputPath):
     start = time.time()
@@ -20,14 +19,13 @@ def main(strInputSurveyGDB,strOutputPath):
     print "Input SurveyGDB: " + str(strInputSurveyGDB)
     print "Output Path: " + str(strOutputPath)
 
+    ## Prepare Metadata Writer File.
     mWriter = Metadata.Metadata.MetadataWriter(toolName,toolVersion)
     mWriter.createRun()
     mWriter.currentRun.addParameter("Input Survey GDB",strInputSurveyGDB)
-    mWriter.currentRun.addOutput("Output Path",strOutputPath)
+    mWriter.currentRun.addParameter("Output Path",strOutputPath)
 
     SurveyGDB = CHaMP_Data.SurveyGeodatabase(strInputSurveyGDB)
-    
-    listTables = []
 
     ## OutputWorkspace Prep
     ### http://stackoverflow.com/questions/185936/delete-folder-contents-in-python ###
@@ -77,7 +75,7 @@ def main(strInputSurveyGDB,strOutputPath):
     ## Tables
     ###Check exist
     ###Write to Log
-                mWriter.currentRun.addMessage("Info","Exported: " + str(raster.filename))
+            mWriter.currentRun.addOutput(raster.Name,str(raster.filename))
     
     ## Vector Datasets
     for vectorFC in SurveyGDB.getVectorDatasets():
@@ -87,7 +85,7 @@ def main(strInputSurveyGDB,strOutputPath):
             start = time.time()
             vectorFC.exportToShapeFile(strOutputPath)
             print "Exported: {0} in {1}s".format(str(vectorFC.filename), int(time.time() - start))
-            mWriter.currentRun.addMessage("Info","Exported: " + str(vectorFC.filename))
+            mWriter.currentRun.addOutput(vectorFC.Name,str(vectorFC.filename))
         else:
             print str(vectorFC.filename) + " does not exist."
             mWriter.currentRun.addMessage("Warning",str(vectorFC.filename) + " does not exist.")
@@ -97,7 +95,7 @@ def main(strInputSurveyGDB,strOutputPath):
         if table.validateExists():
             table.exportTableToXML()
             print "Info","Exported: " + str(table.filename)
-            mWriter.currentRun.addMessage("Info","Exported: " + str(table.filename))
+            mWriter.currentRun.addOutput(table.Name,str(table.filename))
         else:
             print str(table.filename) + " does not exist."
             mWriter.currentRun.addMessage("Warning",str(table.filename) + " does not exist.")
@@ -107,9 +105,12 @@ def main(strInputSurveyGDB,strOutputPath):
     print "Total Time: {0}s".format(totaltime)
     print "Export Complete  at " + str(time.asctime())        
     
-    #TODO: find and write the surveyGDB Version?
-    
-    
+
+    # Results     
+    mWriter.currentRun.addResult("last_log_timestamp","") # Proxy for the latest change
+
+
+    # Write Metadata File
     mWriter.finalizeRun()
     mWriter.writeMetadataFile(strOutputPath + "\\ExportMetadata.xml")
             
