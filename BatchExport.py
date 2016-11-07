@@ -7,10 +7,14 @@ import traceback
 import CHaMP_Data
 import arcpy
 
-def run(directorySource,directoryOutput):
-        # Headers for Log
-    printer("Start of Batch Process for CHaMP Data Export Tool ",directoryOutput)
-    printer(str(time.asctime()),directoryOutput)
+def run(directorySource,directoryOutput=""):
+    # Headers for Log
+    if directoryOutput == "":
+        directoryLog = r"D:\CHaMP"
+    else:
+        directoryLog = directoryOutput
+    printer("Start of Batch Process for CHaMP Data Export Tool ",directoryLog)
+    printer(str(time.asctime()),directoryLog)
 
     # Loop through source directory
     for year in os.listdir(directorySource):
@@ -22,22 +26,25 @@ def run(directorySource,directoryOutput):
                     listsurveyGDB = glob.glob(directoryCurrent + "\\*.gdb")
                     if len(listsurveyGDB) == 1:
                         SurveyGDB = CHaMP_Data.SurveyGeodatabase(listsurveyGDB[0])
-                        outputFolder = directoryOutput + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit)
+                        if directoryOutput == "":
+                            outputFolder = directorySource + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit) + "\\Topo\\GISLayers"
+                        else:
+                            outputFolder = directoryOutput + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit)
                         if not os.path.isdir(outputFolder):
                             os.makedirs(outputFolder)
                         try:
-                            printer("   " + site + ": START",directoryOutput)
+                            printer("   " + site + ": START",directoryLog)
                             CHaMP_Survey_Data_Export_Tool.main(SurveyGDB.filename,outputFolder)
-                            printer("   " + site + ": COMPLETE",directoryOutput)
+                            printer("   " + site + ": COMPLETE",directoryLog)
                         except:
-                            printer("   " + site + ": EXCEPTION",directoryOutput)
+                            printer("   " + site + ": EXCEPTION",directoryLog)
                             # Get the geoprocessing error messages
                             msgs = arcpy.GetMessage(0)
                             msgs += arcpy.GetMessages(2)
                             # Return gp error messages for use with a script tool
                             #arcpy.AddError(msgs)
                             # Print gp error messages for use in Python/PythonWin
-                            printer("***" + msgs,directoryOutput)
+                            printer("***" + msgs,directoryLog)
                             # Get the traceback object
                             tb = sys.exc_info()[2]
                             tbinfo = traceback.format_tb(tb)[0]
@@ -47,12 +54,12 @@ def run(directorySource,directoryOutput):
                             # Return python error messages for use with a script tool
                             #arcpy.AddError(pymsg)
                             # Print Python error messages for use in Python/PythonWin
-                            printer( pymsg + "***",directoryOutput)
+                            printer( pymsg + "***",directoryLog)
                     else:
-                        printer("   " + str(site) + ": Data Incomplete",directoryOutput)
+                        printer("   " + str(site) + ": Data Incomplete",directoryLog)
 
-    printer("Batch Complete",directoryOutput)
-    printer(str(time.asctime()),directoryOutput)
+    printer("Batch Complete",directoryLog)
+    printer(str(time.asctime()),directoryLog)
 
 def printer(string,path): # Output messages to interpreter and log file
     f = open(path + '\\BatchLog.txt', 'a')
@@ -63,11 +70,9 @@ def printer(string,path): # Output messages to interpreter and log file
 
 if __name__ == '__main__':
     inputSourceDirectory = sys.argv[1] # Top Level Monitoring Data Folder
-    inputOutputDirectory = sys.argv[2]
+    if len(sys.argv) == 3:
+        inputOutputDirectory = sys.argv[2]
+    else:
+        inputOutputDirectory = ""
 
     run(inputSourceDirectory,inputOutputDirectory)
-
-
-
-
-

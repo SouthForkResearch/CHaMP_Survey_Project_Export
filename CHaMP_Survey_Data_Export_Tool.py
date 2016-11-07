@@ -70,13 +70,15 @@ def main(strInputSurveyGDB,strOutputPath):
             start = time.time()
             raster.exportToGeoTiff(strOutputPath)
             print "Exported: {0} in {1}s".format(str(raster.filename), int(time.time() - start))
-    ###Write to Log
-
+            ###Write to Log
+            mWriter.currentRun.addOutput(raster.name,str(raster.filename))
+        else:
+            print str(raster.filename) + " does not exist."
+            mWriter.currentRun.addMessage("Warning",str(raster.filename) + " does not exist.")
     ## Tables
     ###Check exist
     ###Write to Log
-            mWriter.currentRun.addOutput(raster.Name,str(raster.filename))
-    
+
     ## Vector Datasets
     for vectorFC in SurveyGDB.getVectorDatasets():
         valstart = time.time()
