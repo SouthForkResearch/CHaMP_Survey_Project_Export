@@ -13,6 +13,7 @@
 
 # # Import Modules # #
 import arcpy
+import xml.etree.ElementTree as ET
 
 ## Survey Data Containers ## 
 class SiteGeodatabase():
@@ -226,8 +227,15 @@ class GISTable():
 
     def __init__(self,filename):
         self.filename = filename
-
+		
     def exportTableToXML(self,outputPath):
+	
+		#rootElement = ET.ElementTree("")
+		#with arcpy.da.SearchCursor(self.filename,"*") as scTable:
+		#	for row in scTable:
+	#			for field in scTable.fields:
+					
+	
         return
 
 class GISRaster():

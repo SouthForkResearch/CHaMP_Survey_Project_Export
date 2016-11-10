@@ -20,6 +20,7 @@ def main(strInputSurveyGDB,strOutputPath):
     print "Output Path: " + str(strOutputPath)
 
     ## Prepare Metadata Writer File.
+    outXMLfile = os.path.join(strOutputPath,SurveyExportMetadata.xml)
     mWriter = Metadata.Metadata.MetadataWriter(toolName,toolVersion)
     mWriter.createRun()
     mWriter.currentRun.addParameter("Input Survey GDB",strInputSurveyGDB)
@@ -114,7 +115,7 @@ def main(strInputSurveyGDB,strOutputPath):
 
     # Write Metadata File
     mWriter.finalizeRun()
-    mWriter.writeMetadataFile(strOutputPath + "\\ExportMetadata.xml")
+    mWriter.writeMetadataFile(outXMLfile)
             
     return
 
