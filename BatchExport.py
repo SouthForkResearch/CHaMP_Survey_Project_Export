@@ -14,15 +14,15 @@ def run(directorySource,directoryOutput,outLogFile,filterCSVFile=""):
     printer("Start of Batch Process for CHaMP Data Export Tool ",outLogFile)
     printer(str(time.asctime()),outLogFile)
     
-    listFilterVists = []
+    listFilterVisits = []
     boolFilterVisits = False 
     if os.path.isfile(filterCSVFile):
         boolFilterVisits = True
-        with open(filterCSV,"rt") as csvfile:
-            reader = csv.reader(f):
+        with open(filterCSVFile,"rt") as csvfile:
+            reader = csv.reader(csvfile)
             for row in reader:
                 for item in row:
-                    listFilterVists.append(item)
+                    listFilterVisits.append(item)
     
     # Loop through source directory
     for year in os.listdir(directorySource):
@@ -30,8 +30,8 @@ def run(directorySource,directoryOutput,outLogFile,filterCSVFile=""):
             for site in os.listdir(directorySource + "\\" + year + "\\" + watershed):
                 directorySite = directorySource + "\\" + year + "\\" + watershed + '\\' +  site
                 for visit in os.listdir(directorySite):
-                    visitID = visit.lstrip("VISIT_")
-                    if visitID in listFilterVisits or boolVilterVisits == False:
+                    VisitID = visit.lstrip("VISIT_")
+                    if VisitID in listFilterVisits or boolFilterVisits == False:
                         directoryCurrent = directorySite + "\\" + visit + "\\Topo"
                         listsurveyGDB = glob.glob(directoryCurrent + "\\*.gdb")
                         if len(listsurveyGDB) == 1:
@@ -39,7 +39,7 @@ def run(directorySource,directoryOutput,outLogFile,filterCSVFile=""):
                             if directoryOutput == "":
                                 outputFolder = directorySource + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit) + "\\Topo\\GISLayers"
                             else:
-                                outputFolder = directoryOutput + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit)
+                                outputFolder = directoryOutput + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit) + "\\Topo\\GISLayers"
                             if not os.path.isdir(outputFolder):
                                 os.makedirs(outputFolder)
                             try:
