@@ -15,6 +15,7 @@
 import arcpy
 import xml.etree.ElementTree as ET
 
+
 ## Survey Data Containers ## 
 class SiteGeodatabase():
     """
@@ -42,6 +43,7 @@ class SiteGeodatabase():
         sitename = row.getValue("SiteName")
         del sc, row
         return sitename
+
 
 class SurveyGeodatabase():
     """
@@ -140,12 +142,13 @@ class SurveyGeodatabase():
                         self.AssocIErr,
                         self.AssocPDensity,
                         self.AssocSlope,
-						self.AssocRough,
-						self.ErrSurface,
+                        self.AssocRough,
+                        self.ErrSurface,
                         self.WSEDEM,
                         self.WaterDepth]
 
     def getDatasets(self):
+        """ rtype: collections.Iterable"""
         for dataset in self.listDatasets:
             yield dataset
 
@@ -170,7 +173,7 @@ class SurveyGeodatabase():
                 yield dataset
 
     def getPublish(self):
-        for dataset in self.getDatasets:
+        for dataset in self.getDatasets():
             if dataset.Publish:
                 yield dataset
 
@@ -201,7 +204,65 @@ class SurveyGeodatabase():
                     if type == "STRING":
                         return str(row[0])
                     else:
-                        return row[0] 
+                        return row[0]
+
+    def exportTopoTINDXF(self, outFolder):
+        """exports dxf file (and SHP files) containing tin components of topo tin in same folder as gdb"""
+
+        from os import path, makedirs
+        arcpy.CheckOutExtension("3D")
+
+        arcpy.env.workspace = arcpy.Describe(self.filename).path
+        topoTINs = arcpy.ListDatasets("TIN*","Tin")
+        topoTIN = topoTINs[0]
+
+        outfile = path.join(outFolder,"TopoTin") + ".dxf"
+
+        memTinPoints = "in_memory//tin_points"
+        memTinLines = "in_memory//tin_lines"
+        memTinArea = "in_memory//tin_area"
+        #TODO Do actual breaklines need to be pulled into their own layer?
+        listTINComponents = [memTinPoints,memTinLines,memTinArea]
+
+        for item in listTINComponents:
+            if arcpy.Exists(item):
+                arcpy.Delete_management(item)
+
+        arcpy.TinNode_3d(topoTIN,memTinPoints)
+        arcpy.TinEdge_3d(topoTIN,memTinLines,"DATA")
+        arcpy.TinDomain_3d(topoTIN,memTinArea,"POLYGON")
+
+        #TODO Convert Line Type from  eSRI code??
+
+        arcpy.ExportCAD_conversion(listTINComponents,"DXF_R2000",outfile)
+
+        # Shapefile Outputs
+        outTinComponents = path.join(outFolder,"TIN_Components")
+        makedirs(outTinComponents)
+        for item in listTINComponents:
+            arcpy.FeatureClassToShapefile_conversion(item,outTinComponents)
+
+        return outfile
+
+    def exportSurveyTopographyDXF(self, outFolder):
+        """exports dxf file containing Topographic Survey Points, Lines and Survey Extent """
+
+        #arcpy.CheckOutExtension("3D")
+        from os import path
+        outfile = path.join(outFolder,"SurveyTopography") + ".dxf"
+
+        #  Topographic Points (everything but Stream Features).
+        # Hard and Soft Breaklines
+        listComponents = []
+        listComponents.append(self.Topo_Points.filename)
+        listComponents.append(self.EdgeOfWater_Points.filename)
+        listComponents.append(self.Breaklines.filename)
+        listComponents.append(self.SurveyExtent.filename)
+
+        arcpy.ExportCAD_conversion(listComponents,"DXF_R2000",outfile)
+
+        return outfile
+
 
 ## Base GIS Classes ## 
 class GISField():
@@ -708,6 +769,9 @@ class Wetted_Islands(GISVector):
         GISVector.__init__(self,GDBProjected)
         self.addField(self.fieldIsValid)
         self.addField(self.fieldQualifying)
+
+
+    # 1 Crew Pre-TIN Survey Data
 
 ## Raster Datasets ## 
 class DEM(GISRaster):

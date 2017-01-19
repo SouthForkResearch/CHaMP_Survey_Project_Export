@@ -84,7 +84,7 @@ def main(strInputSurveyGDB,strOutputPath):
     for vectorFC in SurveyGDB.getVectorDatasets():
         valstart = time.time()
         if vectorFC.validateExists():
-            print "Validated: {0} exists in {1}s".format(str(raster.filename), int(time.time() - valstart))
+            print "Validated: {0} exists in {1}s".format(str(vectorFC.filename), int(time.time() - valstart))
             start = time.time()
             vectorFC.exportToShapeFile(strOutputPath)
             print "Exported: {0} in {1}s".format(str(vectorFC.filename), int(time.time() - start))
@@ -103,11 +103,25 @@ def main(strInputSurveyGDB,strOutputPath):
             print str(table.filename) + " does not exist."
             mWriter.currentRun.addMessage("Warning",str(table.filename) + " does not exist.")
 
+    # Make DXF Files
+    try:
+        topoTinDXF = SurveyGDB.exportTopoTINDXF(strOutputPath)
+        mWriter.currentRun.addOutput("TopoTinDXF",topoTinDXF)
+        print "Exported " + topoTinDXF
+    except:
+        mWriter.currentRun.addMessage("Error", "Cannot write output TopoTIN.dxf file.")
+        print "Could not Export Topo TIN DXF"
+    try:
+        topoSurveyDXF = SurveyGDB.exportSurveyTopographyDXF(strOutputPath)
+        mWriter.currentRun.addOutput("TopoSurveyDXF",topoSurveyDXF)
+        print "Exported " + topoSurveyDXF
+    except:
+        mWriter.currentRun.addMessage("Error", "Cannot write output SurveyTopography.dxf file.")
+        print "Could not Export  Topographic Survey DXF."
     print "Export Complete  at " + str(time.asctime())
     totaltime = ( time.time() - start )
     print "Total Time: {0}s".format(totaltime)
-    print "Export Complete  at " + str(time.asctime())        
-    
+    print "Export Complete  at " + str(time.asctime())
 
     # Results     
     mWriter.currentRun.addResult("last_log_timestamp","") # Proxy for the latest change

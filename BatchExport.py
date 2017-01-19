@@ -42,6 +42,7 @@ def run(directorySource,directoryOutput,outLogFile,filterCSVFile=""):
                                 outputFolder = directoryOutput + "\\" + year + "\\" + watershed + '\\' +  site + '\\' + str(visit) + "\\Topo\\GISLayers"
                             if not os.path.isdir(outputFolder):
                                 os.makedirs(outputFolder)
+
                             try:
                                 printer("   " + site + ": START",outLogFile)
                                 CHaMP_Survey_Data_Export_Tool.main(SurveyGDB.filename,outputFolder)
