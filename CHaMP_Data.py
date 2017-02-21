@@ -147,6 +147,16 @@ class SurveyGeodatabase():
                         self.WSEDEM,
                         self.WaterDepth]
 
+    def projection_info(self):
+
+        sr = arcpy.Describe(self.projected).spatialReference
+
+        dictProjection = {}
+        dictProjection["SpatialReferenceName"] = str(sr.name)
+        dictProjection["SpatialReferenceWKID"] = str(sr.projectionCode)
+        dictProjection["SpatialReference"] = str(sr.exportToString())
+        return dictProjection
+
     def getDatasets(self):
         """ rtype: collections.Iterable"""
         for dataset in self.listDatasets:
@@ -234,13 +244,13 @@ class SurveyGeodatabase():
 
         #TODO Convert Line Type from  eSRI code??
 
-        arcpy.ExportCAD_conversion(listTINComponents,"DXF_R2000",outfile)
+        arcpy.ExportCAD_conversion(listTINComponents,"DXF_R2007",outfile)
 
         # Shapefile Outputs
-        outTinComponents = path.join(outFolder,"TIN_Components")
-        makedirs(outTinComponents)
-        for item in listTINComponents:
-            arcpy.FeatureClassToShapefile_conversion(item,outTinComponents)
+        # outTinComponents = path.join(outFolder,"TIN_Components")
+        # makedirs(outTinComponents)
+        # for item in listTINComponents:
+        #     arcpy.FeatureClassToShapefile_conversion(item,outTinComponents)
 
         return outfile
 
@@ -251,18 +261,100 @@ class SurveyGeodatabase():
         from os import path
         outfile = path.join(outFolder,"SurveyTopography") + ".dxf"
 
-        #  Topographic Points (everything but Stream Features).
-        # Hard and Soft Breaklines
-        listComponents = []
-        listComponents.append(self.Topo_Points.filename)
-        listComponents.append(self.EdgeOfWater_Points.filename)
-        listComponents.append(self.Breaklines.filename)
-        listComponents.append(self.SurveyExtent.filename)
+        memTopoPoints = "in_memory//Topo_Points"
+        memEOW = "in_memory//EdgeofWater_Points"
+        memBreaklines = "in_memory//Breaklines"
+        memSurveyExtent = "in_memory//Survey_Extent"
+        memPoints = "in_memory//AllPoints"
+        #memLines = "in_memory//AllLines"
+        memControlPoints = "in_memory//ControlPoints"
+        listmemFCs = [memTopoPoints,memEOW,memBreaklines,memSurveyExtent]
+        listmemAnnotation = [memPoints,memControlPoints]
 
-        arcpy.ExportCAD_conversion(listComponents,"DXF_R2000",outfile)
+        for fc in listmemFCs + listmemAnnotation:
+            if arcpy.Exists(fc):
+                arcpy.Delete_management(fc)
+
+        arcpy.CopyFeatures_management(self.Topo_Points.filename,memTopoPoints)
+        arcpy.CopyFeatures_management(self.EdgeOfWater_Points.filename,memEOW)
+        arcpy.CopyFeatures_management(self.Breaklines.filename,memBreaklines)
+        arcpy.CopyFeatures_management(self.SurveyExtent.filename,memSurveyExtent)
+        arcpy.CopyFeatures_management(self.Control_Points.filename,memControlPoints)
+        arcpy.CopyFeatures_management(self.Topo_Points.filename,memPoints)
+        #arcpy.CopyFeatures_management(self.Breaklines.filename,memLines)
+
+        arcpy.Append_management(memEOW,memPoints,"NO_TEST")
+
+        # arcpy.AddCADFields_conversion(memControlPoints,
+        #                               "ADD_ENTITY_PROPERTIES",
+        #                               "ADD_LAYER_PROPERTIES",
+        #                               "ADD_TEXT_PROPERTIES",
+        #                               "NO_DOCUMENT_PROPERTIES",
+        #                               "NO_XDATA_PROPERTIES")
+        #
+        # arcpy.CalculateField_management(memControlPoints,"Layer",'"ControlPoints"',"PYTHON")
+        # arcpy.CalculateField_management(memControlPoints, "LyrOn", '1', "PYTHON")
+        # for fc in listmemAnnotation:
+        #     arcpy.AddCADFields_conversion(fc,
+        #                                   "ADD_ENTITY_PROPERTIES",
+        #                                   "NO_LAYER_PROPERTIES",
+        #                                   "ADD_TEXT_PROPERTIES",
+        #                                   "NO_DOCUMENT_PROPERTIES",
+        #                                   "NO_XDATA_PROPERTIES")
+        #     arcpy.CalculateField_management(fc,"TxtValue",'[DESCRIPTION]')
+            #arcpy.CalculateField_management(memPoints,"RefName",'!DESCRIPTION!',"PYTHON")
+    # #        arcpy.CalculateField_management(memPoints,"Layer",'PNTDESC',"PYTHON")
+    #         arcpy.CalculateField_management(memPoints,"CadType",'"TEXT"')
+    #
+    #     block = "def get_z(shape):" \
+    #             "    point = shape.getPoint(0)" \
+    #             "    return point.Z"
+    #
+    #     arcpy.CalculateField_management( memPoints, "Elevation","get_z(!shape!)","PYTHON",block)
+
+        #arcpy.ExportCAD_conversion([memBreaklines,memSurveyExtent] + listmemAnnotation,"DXF_R2010",outfile)
+
+        arcpy.ExportCAD_conversion([memBreaklines,memSurveyExtent,memPoints],"DXF_R2010",outfile)
+
+        # Export CSV
+        ## Add Control Points
+        #arcpy.Append_management(self.Control_Points.filename,memPoints,"NO_TEST")
+
+        outCSV = path.join(outFolder,"SurveyTopographyPoints") + ".csv"
+        exportAsCSV(memPoints,outCSV)
+
+        outControlCSV = path.join(outFolder,"ControlNetworkPoints") + ".csv"
+        exportAsCSV(memControlPoints,outControlCSV)
 
         return outfile
 
+def exportAsCSV(inFeatureClass,outCSVfile):
+
+    import csv
+
+    with open(outCSVfile,"wb") as csvfile:
+        csvWriter = csv.writer(csvfile)
+
+        fields = arcpy.ListFields(inFeatureClass)
+        fieldsGIS = ("POINT_NUMBER","SHAPE@Y","SHAPE@X","SHAPE@Z","DESCRIPTION")
+        fieldsCAD = ("PNTNO","Y","X","ELEV","DESC")
+
+        # for field in fields:
+        #     if field.name == u"Shape":
+        #         dictFields["SHAPE@X"] = "X"
+        #         listFields.append("SHAPE@Y")
+        #         listFields.append("SHAPE@Z")
+        #     elif field.name:
+        #
+        #
+        #     else:
+        #         listFields.append(field.name)
+
+        with arcpy.da.SearchCursor(inFeatureClass,fieldsGIS) as scFeatures:
+            csvWriter.writerow(fieldsCAD)
+            for row in scFeatures:
+                csvWriter.writerow(row)
+    return
 
 ## Base GIS Classes ## 
 class GISField():

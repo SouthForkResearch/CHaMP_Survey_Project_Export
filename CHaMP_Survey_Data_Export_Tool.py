@@ -14,6 +14,7 @@ toolName = "CHaMP Survey Data Export Tool"
 toolVersion = "1.2"
 
 def main(strInputSurveyGDB,strOutputPath):
+    reload(CHaMP_Data)
     start = time.time()
     print "Starting CHaMP Survey Export Tool at " + str(time.asctime())
     print "Input SurveyGDB: " + str(strInputSurveyGDB)
@@ -27,6 +28,9 @@ def main(strInputSurveyGDB,strOutputPath):
     mWriter.currentRun.addParameter("Output Path",strOutputPath)
 
     SurveyGDB = CHaMP_Data.SurveyGeodatabase(strInputSurveyGDB)
+
+    for key, value in SurveyGDB.projection_info().iteritems():
+        mWriter.currentRun.addResult(key,value)
 
     ## OutputWorkspace Prep
     ### http://stackoverflow.com/questions/185936/delete-folder-contents-in-python ###
@@ -104,15 +108,18 @@ def main(strInputSurveyGDB,strOutputPath):
             mWriter.currentRun.addMessage("Warning",str(table.filename) + " does not exist.")
 
     # Make DXF Files
+    outCadFolder = os.path.join(strOutputPath,"CAD_Files")
+    os.makedirs(outCadFolder)
+
     try:
-        topoTinDXF = SurveyGDB.exportTopoTINDXF(strOutputPath)
+        topoTinDXF = SurveyGDB.exportTopoTINDXF(outCadFolder)
         mWriter.currentRun.addOutput("TopoTinDXF",topoTinDXF)
         print "Exported " + topoTinDXF
     except:
         mWriter.currentRun.addMessage("Error", "Cannot write output TopoTIN.dxf file.")
         print "Could not Export Topo TIN DXF"
     try:
-        topoSurveyDXF = SurveyGDB.exportSurveyTopographyDXF(strOutputPath)
+        topoSurveyDXF = SurveyGDB.exportSurveyTopographyDXF(outCadFolder)
         mWriter.currentRun.addOutput("TopoSurveyDXF",topoSurveyDXF)
         print "Exported " + topoSurveyDXF
     except:
@@ -132,6 +139,11 @@ def main(strInputSurveyGDB,strOutputPath):
     mWriter.writeMetadataFile(outXMLfile)
             
     return
+
+# def PointsToCSV(inFeatureClass,OutCSVFile):
+#
+#     with arcpy.da.SearchCursor(inFeatureClass) as scFeatureClass:
+
 
 if __name__ == "__main__":
 
