@@ -11,7 +11,7 @@ import CHaMP_Data
 import sfr_metadata as Metadata
 
 toolName = "CHaMP Survey Data Export Tool"
-toolVersion = "1.2"
+toolVersion = "1.3"
 
 def main(strInputSurveyGDB,strOutputPath):
     reload(CHaMP_Data)
