@@ -446,7 +446,7 @@ class GISFile():
 ## Fields ## 
 class FieldDescription(GISField):
     nameFull = "DESCRIPTION"
-    nameShort = "DescCode"
+    nameShort = "Code"
     lengthString = 6
 
     def __init__(self,codeList):
