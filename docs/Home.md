@@ -1,4 +1,6 @@
-# CHaMP Survey Export Tool
+---
+title: CHaMP Survey Export Tool
+---
 
 The CHaMP Survey Export tool exports CHaMP Survey data: 
 
