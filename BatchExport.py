@@ -11,6 +11,8 @@ import csv
 def run(directorySource,directoryOutput,outLogFile,filterCSVFile=""):
     # Headers for Log
  
+    os.makedirs(directoryOutput)
+ 
     printer("Start of Batch Process for CHaMP Data Export Tool ",outLogFile)
     printer(str(time.asctime()),outLogFile)
     
