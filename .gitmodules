@@ -3,4 +3,4 @@
 url=https://github.com/SouthForkResearch/SFRMetadata.git
 [submodule "Riverscapes"]
 	path = Riverscapes
-	url = git@github.com:SouthForkResearch/PythonRiverscapesProject.git
+	url = https://github.com/SouthForkResearch/PythonRiverscapesProject.git
