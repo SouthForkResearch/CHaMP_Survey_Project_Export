@@ -98,7 +98,7 @@ def main(strInputSurveyGDB, strOutputPath):
             mWriter.currentRun.addMessage("Warning",str(vectorFC.filename) + " does not exist.")
     
     ## Tables
-    for table in SurveyGDB.getTables():
+    for table in SurveyGDB.getTables:
         if table.validateExists():
             table.exportTableToXML()
             print "Info","Exported: " + str(table.filename)
