@@ -1,6 +1,6 @@
 [submodule "sfr_metadata"]
 	path = sfr_metadata
-	url = git@bitbucket.org:KellyWhitehead/sfr_metadata.git
+url=git@github.com:SouthForkResearch/SFRMetadata.git
 [submodule "Riverscapes"]
 	path = Riverscapes
 	url = git@github.com:SouthForkResearch/PythonRiverscapesProject.git
