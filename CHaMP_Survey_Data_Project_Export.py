@@ -20,6 +20,10 @@ def export_survey_project(survey_gdb,
                           ws_tin,
                           channelunits_csv,
                           output_folder,
+                          visitid,
+                          siteid,
+                          watershed,
+                          year,
                           raw_inst_file=None,
                           aux_inst_file=None,
                           dxf_file=None,
@@ -92,13 +96,14 @@ def export_survey_project(survey_gdb,
     # New Project
     rs_project = Riverscapes.Project()
     rs_project.projectPath = output_folder
-    rs_project.name = "" # Todo: Provide Site Name as Project Name
+    rs_project.name = "CHaMP Topo Survey" if siteid is None else siteid
     rs_project.projectType = "Topo"
     rs_project.projectVersion = toolVersion
 
-    dict_instrument_tag_data = {}
+    for name, value in {"SiteID":siteid, "VisitID":visitid, "Watershed":watershed, "Year":year}.iteritems():
+        rs_project.ProjectMetadata[name] = value
 
-    # todo add proper SiteID, VisitID and WatershedID
+    dict_instrument_tag_data = {}
 
     if SurveyGDB.tblSurveyInfo.validateExists():
         for field, value in SurveyGDB.tblSurveyInfo.get_data():
