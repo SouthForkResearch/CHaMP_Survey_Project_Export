@@ -37,12 +37,9 @@ def run(args):
                     VisitID = visit.lstrip("VISIT_")
                     if VisitID in listFilterVisits or boolFilterVisits == False:
                         path_topo = os.path.join(path_site, visit, "Topo")
-                        dict_visit = {}
-                        if len(glob.glob(os.path.join(path_topo, "*.gdb"))) <> 1:
-                            raise Exception
-                        dict_visit['surveyGDB'] = glob.glob(os.path.join(path_topo, "*.gdb"))[0]
-
                         list_surveygdb = glob.glob(os.path.join(path_topo, "*.gdb"))
+                        list_tin = glob.glob(os.path.join(path_topo, "tin*"))
+                        list_wsetin = glob.glob(os.path.join(path_topo, "wsetin*"))
                         if len(list_surveygdb) == 1:
                             path_output_visit = os.path.join(path_topo, args.output_folder_name) if args.path_output is None \
                                                     else os.path.join(args.path_output, year, watershed, site,
@@ -51,14 +48,20 @@ def run(args):
                                 os.makedirs(path_output_visit)
                             try:
                                 printer("   " + site + ": START", args.outLogFile)
-                                if args.project:
+                                if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
 
-                                    tin = None
-                                    wsetin = None
+                                    tin = list_tin[0]
+                                    wsetin = list_wsetin[0]
                                     raw_instrument_file = None
                                     aux_instrument_file = None
-                                    dxf_file = None
-                                    map_images_folder = None
+                                    if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
+                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))
+                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))
+                                    elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
+                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))
+                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))
+                                    dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))
+                                    map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 
                                     CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
                                                                                            tin,
@@ -73,8 +76,11 @@ def run(args):
                                                                                            aux_instrument_file,
                                                                                            dxf_file,
                                                                                            map_images_folder)
-                                else:
+                                elif len(list_surveygdb) == 0:
                                     CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
+                                else:
+                                    printer("   " +  site + ": ERROR, does not have correct input data requirements",
+                                            args.outLogFile)
                                 printer("   " + site + ": COMPLETE", args.outLogFile)
                             except:
                                 printer("   " + site + ": EXCEPTION", args.outLogFile)
