@@ -1,5 +1,5 @@
 ---
-SFR Workflow for "Maude"
+title: SFR Workflow for "Maude"
 ---
 
 
