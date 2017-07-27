@@ -98,7 +98,7 @@ def main(strInputSurveyGDB, strOutputPath):
             mWriter.currentRun.addMessage("Warning",str(vectorFC.filename) + " does not exist.")
     
     ## Tables
-    for table in SurveyGDB.getTables:
+    for table in SurveyGDB.getTables():
         if table.validateExists():
             table.exportTableToXML()
             print "Info","Exported: " + str(table.filename)
@@ -108,12 +108,12 @@ def main(strInputSurveyGDB, strOutputPath):
             mWriter.currentRun.addMessage("Warning",str(table.filename) + " does not exist.")
 
     # Make DXF Files
-    outCadFolder = os.path.join(strOutputPath,"CAD_Files")
+    outCadFolder = os.path.join(strOutputPath, "CAD_Files")
     os.makedirs(outCadFolder)
 
     try:
         topoTinDXF = SurveyGDB.exportTopoTINDXF(outCadFolder)
-        mWriter.currentRun.addOutput("TopoTinDXF",topoTinDXF)
+        mWriter.currentRun.addOutput("TopoTinDXF", topoTinDXF)
         print "Exported " + topoTinDXF
     except:
         mWriter.currentRun.addMessage("Error", "Cannot write output TopoTIN.dxf file.")

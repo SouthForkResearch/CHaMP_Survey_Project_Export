@@ -7,6 +7,10 @@ The CHaMP Survey Data Exports are a set of utilities to export CHaMP Survey Data
 - [A folder of output files](folder_export)
 - [Riverscapes Project](project_export)
 
+The Export Tools also includes a [Batch Processing Script](batch_process).
+
+[Example Workflow](workflow)
+
 ## Installation
 
 
