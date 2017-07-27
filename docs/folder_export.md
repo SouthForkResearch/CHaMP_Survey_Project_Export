@@ -2,8 +2,6 @@
 title: Flat File Exports
 ---
 
-
-
 The folder Export tool exports CHaMP Survey data into open source files within the specified folder. The exact number of files depends on the number of standard CHaMP datasets found within the survey GDB:
 
 - from ESRI File-Geodatabase Feature Classes to shapefile format
