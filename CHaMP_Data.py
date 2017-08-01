@@ -436,9 +436,11 @@ class GISVector(GISDataset):
                 fieldMappings.addFieldMap(fm)
         return fieldMappings
 
-    def exportToShapeFile(self, outputPath, outname=None):
+    def exportToShapeFile(self, outputPath, outname=None, force_z_enabled=False):
         name = self.outName if outname is None else outname
         field_mappings = self.getFieldMapping()
+        if force_z_enabled:
+            arcpy.env.output_z_flag = True
         arcpy.FeatureClassToFeatureClass_conversion(self.filename, outputPath, name,
                                                     field_mapping=field_mappings)
         return name + ".shp"
@@ -451,6 +453,9 @@ class GISVector(GISDataset):
 
     def basename(self):
         return self.shapefile_basename()
+
+    def test_z(self):
+        return arcpy.Describe(self.filename).hasZ
 
 
 ## Fields ##
@@ -900,7 +905,7 @@ class SurveyExtent(GISVector):
 
     def __init__(self, FDS):
         GISVector.__init__(self, FDS, "Survey_Extent")
-        self.family = "surveydata"
+        self.family = "surveyextents"
 
 class Thalweg(GISVector):
     Publish = True
@@ -1049,6 +1054,14 @@ class WaterDepth(GISRaster):
         self.rs_name = "Water Depth"
         self.rs_id = "WaterDepth"
         self.rs_type = "WaterDepth"
+
+    def create(self, DEM, WSEDEM):
+        arcpy.env.extent = DEM
+        arcpy.env.snapRaster = DEM
+        rasterRawDepth = arcpy.sa.Minus(WSEDEM, DEM)
+        rasterPositiveMaskBool = arcpy.sa.GreaterThan(rasterRawDepth, 0)
+        rasterDepth = arcpy.sa.Abs(arcpy.sa.Times(rasterRawDepth, rasterPositiveMaskBool))
+        rasterDepth.save(self.filename)
 
 
 class WSEDEM(GISRaster):

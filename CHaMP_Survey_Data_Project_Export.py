@@ -108,7 +108,7 @@ def export_survey_project(survey_gdb,
     if SurveyGDB.tblSurveyInfo.validateExists():
         for field, value in SurveyGDB.tblSurveyInfo.get_data():
             if field not in ["InstrumentType", "InstrumentModel"]:
-                rs_project.ProjectMetadata["Crew" + str(field)] = str(value)
+                rs_project.ProjectMetadata["CrewSpecified" + str(field)] = str(value)
             else:
                 dict_instrument_tag_data[str(field)] = str(value)
 
@@ -117,7 +117,7 @@ def export_survey_project(survey_gdb,
     os.makedirs(inputs_folder)
 
     # SQLITE
-    sqlite_db_template = os.path.join(sys.argv[0].rstrip(r"/CHaMP_Survey_Data_Project_Export.py"), "SurveyQualityTemplate.sqlite")
+    sqlite_db_template = os.path.join(os.path.realpath(__file__).rstrip(os.path.basename(__file__)), "SurveyQualityTemplate.sqlite")
     sqlite_db = os.path.join(inputs_folder, "SurveyQualityDB.sqlite")
     shutil.copyfile(sqlite_db_template, sqlite_db)
 
@@ -196,10 +196,17 @@ def export_survey_project(survey_gdb,
 
         for dataset in SurveyGDB.get_survey_datasets(True):
             if dataset.validateExists():
-                dataset.exportToShapeFile(projected_folder)
+                dataset.exportToShapeFile(projected_folder, force_z_enabled=True)
                 ds = Riverscapes.Dataset()
                 ds.create(dataset.rs_name, os.path.join("SurveyData", dataset.shapefile_basename()))
                 ds.id = dataset.rs_id
+                # check if z values for breaklines exist.
+                if dataset.rs_name == "Breaklines" and not dataset.test_z():
+                    import zsnap
+                    zsnap(os.path.join(projected_folder, "Breaklines.shp"),[SurveyGDB.Topo_Points.filename,
+                                                                            SurveyGDB.EdgeOfWater_Points.filename,
+                                                                            SurveyGDB.Stream_Features.filename])
+                    ds.metadata["ExportNote"] = "Enabled Z Values on Export"
                 projected_realization.datasets[ds.id] = ds
 
         survey_extents_folder = os.path.join(projected_folder, "SurveyExtents")
@@ -209,20 +216,22 @@ def export_survey_project(survey_gdb,
         ds.create(SurveyGDB.SurveyExtent.rs_name, os.path.join("SurveyData", "SurveyExtents",
                                                                SurveyGDB.SurveyExtent.shapefile_basename()))
         ds.id = SurveyGDB.SurveyExtent.rs_id
+        ds.attributes["active"] = "true"
         projected_realization.survey_extents[ds.id] = ds
         rs_project.addRealization(projected_realization, "survey_data_projected")
 
     # Topography Realization
-    topography_folder = os.path.join(output_folder, "Topography", "TIN0001")
+    topography_folder_base = os.path.join("Topography", "TIN0001")
+    topography_folder = os.path.join(output_folder, topography_folder_base)
     os.makedirs(topography_folder)
 
     TIN = CHaMP_Data.EsriTIN(topo_tin)
     TIN.copy_tin(os.path.join(topography_folder, TIN.basename))
 
     ds_tin = Riverscapes.Dataset()
-    ds_tin.create("TopoTIN", os.path.join("Topography", "TIN0001", TIN.basename), "TIN")
+    ds_tin.create("TopoTIN", os.path.join(topography_folder_base, TIN.basename), "TIN")
     ds_tin.id = TIN.basename
-    ds_tin.attributes["active"] = "True"
+    ds_tin.attributes["active"] = "true"
 
     topography_realization = Riverscapes.TopographyRealization("Topography Realization", ds_tin)
     topography_realization.id = "topography"
@@ -237,10 +246,10 @@ def export_survey_project(survey_gdb,
             ds = Riverscapes.Dataset()
             if dataset.stage == "wetted":
                 dataset.exportToShapeFile(stage_wetted_folder)
-                ds.create(dataset.rs_name, os.path.join("Stages", "Wetted", dataset.shapefile_basename()))
+                ds.create(dataset.rs_name, os.path.join(topography_folder_base, "Stages", "Wetted", dataset.shapefile_basename()))
             elif dataset.stage == "bankfull":
                 dataset.exportToShapeFile(stage_bankfull_folder)
-                ds.create(dataset.rs_name, os.path.join("Stages", "Bankfull", dataset.shapefile_basename()))
+                ds.create(dataset.rs_name, os.path.join(topography_folder_base, "Stages", "Bankfull", dataset.shapefile_basename()))
             ds.id = dataset.rs_id
             ds.attributes["stage"] = dataset.stage
             ds.attributes["type"] = dataset.stage_type
@@ -250,19 +259,28 @@ def export_survey_project(survey_gdb,
         if dataset.validateExists():
             ds = Riverscapes.Dataset()
             dataset.export(topography_folder)
-            ds.create(dataset.rs_name, os.path.join("Topography", "TIN0001", dataset.basename()), dataset.rs_type)
+            ds.create(dataset.rs_name, os.path.join(topography_folder_base, dataset.basename()), dataset.rs_type)
             ds.id = dataset.rs_id
             if dataset.rs_name == "DEM":
                 for key, value in dataset.get_extents().iteritems():
                     ds.metadata[key] = str(value)
+            topography_realization.topography[ds.id] = ds
+        elif dataset.rs_name == "WaterDepth":
+            dataset.create(SurveyGDB.DEM, SurveyGDB.WSEDEM)
+            ds = Riverscapes.Dataset()
+            dataset.export(topography_folder)
+            ds.create(dataset.rs_name, os.path.join(topography_folder_base, dataset.basename()), dataset.rs_type)
+            ds.id = dataset.rs_id
             topography_realization.topography[ds.id] = ds
 
     WSETIN = CHaMP_Data.EsriTIN(ws_tin)
     WSETIN.copy_tin(os.path.join(topography_folder, WSETIN.basename))
     ds_wsetin = Riverscapes.Dataset()
 
-    ds_wsetin.create("Water Surface TIN", os.path.join("Topography", "TIN0001", WSETIN.basename), "WaterSurfaceTIN")
-    ds_wsetin.id = WSETIN.basename
+    ds_wsetin.create("Water Surface TIN", os.path.join(topography_folder_base, WSETIN.basename), "WaterSurfaceTIN")
+    ds_wsetin.id = "WaterSurfaceTIN"
+    ds_wsetin.attributes["active"] = "true"
+
     topography_realization.topography[ds_wsetin.id] = ds_wsetin
 
     assoc_surfaces_folder = os.path.join(topography_folder, "AssocSurfaces")
@@ -271,7 +289,7 @@ def export_survey_project(survey_gdb,
         if dataset.validateExists():
             ds = Riverscapes.Dataset()
             dataset.export(assoc_surfaces_folder)
-            ds.create(dataset.rs_name, os.path.join("Topography", "TIN0001", "AssocSurfaces", dataset.basename()))
+            ds.create(dataset.rs_name, os.path.join(topography_folder_base, "AssocSurfaces", dataset.basename()), dataset.rs_type)
             ds.id = dataset.rs_id
             topography_realization.assocated_surfaces[ds.id] = ds
 
@@ -283,7 +301,7 @@ def export_survey_project(survey_gdb,
         os.makedirs(mapimages_project_folder)
         import glob
         images = []
-        for image in glob.glob(os.path.join(mapimages_folder, "*.png")):
+        for image in glob.glob(os.path.join(mapimages_folder, "*.png")) + glob.glob(os.path.join(mapimages_folder, "*.jpg")):
             image_name = os.path.basename(image)
             shutil.copyfile(image, os.path.join(mapimages_project_folder, image_name))
             images.append(image_name)
@@ -322,10 +340,14 @@ def main():
     parser.add_argument('wseTIN', help="Path to Water Surface TIN", type=str)
     parser.add_argument('channelunitscsv', help='Path to channelunit csv file', type=str)
     parser.add_argument('outputprojectfolder', help="folder to store new project")
-    parser.add_argument('rawinstrumentfile', help="raw instrument files", type=str)
-    parser.add_argument('auxinstrumentfile', help="auxiliary instrument files", type=str)
-    parser.add_argument('dxffile', help="Path to dxf file", type=str)
-    parser.add_argument('mapimagesfolder', help="Path to map images folder", type=str)
+    parser.add_argument('visitid', help='the visit id for the survey as string', type=str)
+    parser.add_argument('site', help='the site id/name for the survey', type=str)
+    parser.add_argument('watershed', help='the watershed for the survey', type=str)
+    parser.add_argument('year', help='the year of the survey as string', type=str)
+    parser.add_argument('--rawinstrumentfile', help="raw instrument files", type=str, default=None)
+    parser.add_argument('--auxinstrumentfile', help="auxiliary instrument files", type=str, default=None)
+    parser.add_argument('--dxffile', help="Path to dxf file", type=str, default=None)
+    parser.add_argument('--mapimagesfolder', help="Path to map images folder", type=str, default=None)
 
     parser.add_argument('--logfile', help='Output a log file.', default="" )
     parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False )
@@ -351,6 +373,10 @@ def main():
                               args.wseTIN,
                               args.channelunitscsv,
                               args.outputprojectfolder,
+                              args.visitid,
+                              args.site,
+                              args.watershed,
+                              args.year,
                               args.rawinstrumentfile,
                               args.auxinstrumentfile,
                               args.dxffile,

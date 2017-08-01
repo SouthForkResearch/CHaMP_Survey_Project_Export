@@ -5,102 +5,86 @@ import os
 import glob
 import sys
 import traceback
-import arcpy
-import csv
-from zipfile import ZipFile
 
 
 def run(args):
+    path_output = args.path_input if args.path_output == None else args.path_output
+    if not os.path.exists(path_output):
+        os.makedirs(path_output)
     # Headers for Log
-
-    os.makedirs(args.path_output)
-
     printer("Start of Batch Process for CHaMP Data Export Tool ", args.outLogFile)
     printer(str(time.asctime()), args.outLogFile)
 
-    listFilterVisits = []
-    boolFilterVisits = False
-    if os.path.isfile(args.filterCSVFile):
-        boolFilterVisits = True
+    listFilterVisits = None
+    if args.filterCSVFile is not None and os.path.isfile(args.filterCSVFile):
+        import csv
         with open(args.filterCSVFile, "rt") as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                for item in row:
-                    listFilterVisits.append(item)
+            listFilterVisits = [item for row in csv.reader(csvfile) for item in row]
+            # reader = csv.reader(csvfile)
+            # for row in reader:
+            #     for item in row:
+            #         listFilterVisits.append(item)
 
     # Loop through source directory
-    for year in os.listdir(args.path_source_data):
-        for watershed in os.listdir(os.path.join(args.path_source_data, year)):
-            for site in os.listdir(os.path.join(args.path_source_data, year, watershed)):
-                path_site = os.path.join(args.path_source_data, year, watershed, site)
+    # TODO: loop through dirs only (files throw an error).
+    for year in os.listdir(args.path_input):
+        for watershed in os.listdir(os.path.join(args.path_input, year)):
+            for site in os.listdir(os.path.join(args.path_input, year, watershed)):
+                path_site = os.path.join(args.path_input, year, watershed, site)
                 for visit in os.listdir(path_site):
                     VisitID = visit.lstrip("VISIT_")
-                    if VisitID in listFilterVisits or boolFilterVisits == False:
+                    if listFilterVisits is None or VisitID in listFilterVisits:
                         path_topo = os.path.join(path_site, visit, "Topo")
                         list_surveygdb = glob.glob(os.path.join(path_topo, "*.gdb"))
                         list_tin = glob.glob(os.path.join(path_topo, "tin*"))
                         list_wsetin = glob.glob(os.path.join(path_topo, "wsetin*"))
+                        # todo Use better try raise except here
                         if len(list_surveygdb) == 1:
-                            path_output_visit = os.path.join(path_topo, args.output_folder_name) if args.path_output is None \
-                                                    else os.path.join(args.path_output, year, watershed, site,
-                                                    str(visit), "Topo", args.ouput_folder_name)
+                            path_output_visit = os.path.join(path_topo, args.output_folder_name) if path_output is None \
+                                                    else os.path.join(path_output, year, watershed, site,
+                                                    str(visit), "Topo", args.out_folder_name)
                             if not os.path.isdir(path_output_visit):
                                 os.makedirs(path_output_visit)
-                            try:
-                                printer("   " + site + ": START", args.outLogFile)
-                                if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
+                            # try:
+                            printer("   " + site + ": START", args.outLogFile)
+                            if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
+                                tin = list_tin[0]
+                                wsetin = list_wsetin[0]
+                                raw_instrument_file = None
+                                aux_instrument_file = None
+                                if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
+                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
+                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))[0]
+                                elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
+                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))[0]
+                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
+                                dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))[0]
+                                map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 
-                                    tin = list_tin[0]
-                                    wsetin = list_wsetin[0]
-                                    raw_instrument_file = None
-                                    aux_instrument_file = None
-                                    if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
-                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))
-                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))
-                                    elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
-                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))
-                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))
-                                    dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))
-                                    map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
-
-                                    CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
-                                                                                           tin,
-                                                                                           wsetin,
-                                                                                           os.path.join(path_topo, "ChannelUnits.csv"),
-                                                                                           path_output_visit,
-                                                                                           VisitID,
-                                                                                           site,
-                                                                                           watershed,
-                                                                                           year,
-                                                                                           raw_instrument_file,
-                                                                                           aux_instrument_file,
-                                                                                           dxf_file,
-                                                                                           map_images_folder)
-                                elif len(list_surveygdb) == 0:
-                                    CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
-                                else:
-                                    printer("   " +  site + ": ERROR, does not have correct input data requirements",
-                                            args.outLogFile)
-                                printer("   " + site + ": COMPLETE", args.outLogFile)
-                            except:
-                                printer("   " + site + ": EXCEPTION", args.outLogFile)
-                                # Get the geoprocessing error messages
-                                msgs = arcpy.GetMessage(0)
-                                msgs += arcpy.GetMessages(2)
-                                # Return gp error messages for use with a script tool
-                                # arcpy.AddError(msgs)
-                                # Print gp error messages for use in Python/PythonWin
-                                printer("***" + msgs, args.outLogFile)
-                                # Get the traceback object
-                                tb = sys.exc_info()[2]
-                                tbinfo = traceback.format_tb(tb)[0]
-                                # Concatenate information together concerning the error into a
-                                #   message string
-                                pymsg = tbinfo + "\n" + str(sys.exc_type) + ": " + str(sys.exc_value)
-                                # Return python error messages for use with a script tool
-                                # arcpy.AddError(pymsg)
-                                # Print Python error messages for use in Python/PythonWin
-                                printer(pymsg + "***", args.outLogFile)
+                                CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
+                                                                                       tin,
+                                                                                       wsetin,
+                                                                                       os.path.join(path_topo, "ChannelUnits.csv"),
+                                                                                       path_output_visit,
+                                                                                       VisitID,
+                                                                                       site,
+                                                                                       watershed,
+                                                                                       year,
+                                                                                       raw_instrument_file,
+                                                                                       aux_instrument_file,
+                                                                                       dxf_file,
+                                                                                       map_images_folder)
+                            elif len(list_surveygdb) == 0:
+                                CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
+                            else:
+                                printer("   " + site + ": ERROR, does not have correct input data requirements",
+                                        args.outLogFile)
+                            printer("   " + site + ": COMPLETE", args.outLogFile)
+                            # except:
+                                # printer("   " + site + ": EXCEPTION", args.outLogFile)
+                                # tb = sys.exc_info()[2]
+                                # tbinfo = traceback.format_tb(tb)[0]
+                                # printer("{0} \n {1}: {2}".format(tbinfo, sys.exc_type, sys.exc_value), args.outLogFile)
                         else:
                             printer("   " + str(site) + ": Data Incomplete", args.outLogFile)
                     else:
@@ -109,21 +93,22 @@ def run(args):
     printer(str(time.asctime()), args.outLogFile)
 
 
-def printer(string, logfile):  # Output messages to interpreter and log file
-    f = open(logfile, 'a')
+def printer(string, logfile=None):  # Output messages to interpreter and log file
     print string
-    f.write(string + "\n")
-    f.close()
+    if logfile:
+        with open(logfile, 'a') as f:
+            f.write("{}\n".format(string))
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Export CHaMP Survey Data in folders or as Riverscapes Projects",
-                                     epilog=r"data in 'path_input' must be in standard CHaMP structure (i.e. Year/Watershed/Site/VisitID/Topo)")
+                                     epilog=r"data in 'path_input' must be in standard CHaMP structure "
+                                            r"(i.e. Year/Watershed/Site/VisitID/Topo)")
     parser.add_argument('path_input', help='Path to data', type=str)
     parser.add_argument('--path_output', help='Path to outputs', type=str, default=None)
-    parser.add_argument('--outputLogFile', help="output log file for batch process", type=str)
-    parser.add_argument('--csvFilter', help='csv file with visitID to filter', type=str)
+    parser.add_argument('--outLogFile', help="output log file for batch process", type=str)
+    parser.add_argument('--filterCSVFile', help='csv file with visitID to filter', type=str)
     parser.add_argument('--out_folder_name',
                         help='name of new folder in visit folder to save exported data',
                         type=str,
@@ -131,7 +116,6 @@ def main():
     parser.add_argument('--project', help="Export topo data as Riverscapes Project", action="store_true", default=False)
 
     args = parser.parse_args()
-
     run(args)
 
 
