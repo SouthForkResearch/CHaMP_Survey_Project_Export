@@ -1,9 +1,13 @@
 ---
 title: SFR Workflow for "Maude"
 ---
+# Overview
+
 This is the proposed workflow for exporting champ surveys as Riverscapes Projects.
 
 <img src="https://docs.google.com/drawings/d/1k5FEZbzcImuXO2uAhD3Vir9f3wy4G4mnIwZymx0Yi3Y/pub?w=1726&amp;h=1084">
+
+# Workflow
 
 ## Download Data
 
