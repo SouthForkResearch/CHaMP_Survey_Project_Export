@@ -12,6 +12,7 @@ This is the proposed workflow for exporting champ surveys as Riverscapes Project
 ## Download Data
 
 1. Make sure `CHaMP Automation` repo is pulled and any dependencies are up to date.
+   > Make sure Sitka API credentials are set. Contact Kelly or Matt for help on this.
 2. Create a folder to store downloaded data.
 3. Open an OSGEO command line window
 4. Run `python APIDownload_byType.py` with the following parameters:
