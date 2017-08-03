@@ -5,7 +5,7 @@ import os
 import glob
 import sys
 import traceback
-
+import sqlite3
 
 def run(args):
     path_output = args.path_input if args.path_output == None else args.path_output
@@ -25,13 +25,27 @@ def run(args):
             #     for item in row:
             #         listFilterVisits.append(item)
 
+    conn_log = sqlite3.connect(os.path.join(path_output, "export_log.db"))
+    cursor = conn_log.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    if not any("SurveyExports" in tablename for tablename in cursor.fetchall()):
+        conn_log.execute('''CREATE TABLE SurveyExports (timestamp text, 
+                                                        year text, 
+                                                        watershed text, 
+                                                        site text, 
+                                                        visit text, 
+                                                        status text,
+                                                        message text)''')
+        conn_log.commit()
+
     # Loop through source directory
-    # TODO: loop through dirs only (files throw an error).
-    for year in os.listdir(args.path_input):
-        for watershed in os.listdir(os.path.join(args.path_input, year)):
-            for site in os.listdir(os.path.join(args.path_input, year, watershed)):
-                path_site = os.path.join(args.path_input, year, watershed, site)
-                for visit in os.listdir(path_site):
+    for year in [item for item in os.listdir(args.path_input) if os.path.isdir(os.path.join(args.path_input, item))]:
+        path_year = os.path.join(args.path_input, year)
+        for watershed in [item for item in os.listdir(path_year) if os.path.isdir(os.path.join(path_year, item))]:
+            path_watershed = os.path.join(path_year, watershed)
+            for site in [item for item in os.listdir(path_watershed) if os.path.isdir(os.path.join(path_watershed, item))]:
+                path_site = os.path.join(path_watershed, site)
+                for visit in [item for item in os.listdir(path_site) if os.path.isdir(os.path.join(path_site, item))]:
                     VisitID = visit.lstrip("VISIT_")
                     if listFilterVisits is None or VisitID in listFilterVisits:
                         path_topo = os.path.join(path_site, visit, "Topo")
@@ -45,52 +59,75 @@ def run(args):
                                                     str(visit), "Topo", args.out_folder_name)
                             if not os.path.isdir(path_output_visit):
                                 os.makedirs(path_output_visit)
-                            # try:
-                            printer("   " + site + ": START", args.outLogFile)
-                            if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
-                                tin = list_tin[0]
-                                wsetin = list_wsetin[0]
-                                raw_instrument_file = None
-                                aux_instrument_file = None
-                                if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
-                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
-                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))[0]
-                                elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
-                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))[0]
-                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
-                                dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))[0]
-                                map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
+                            try:
+                                printer("   " + site + ": START", args.outLogFile)
+                                if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
+                                    tin = list_tin[0]
+                                    wsetin = list_wsetin[0]
+                                    raw_instrument_file = None
+                                    aux_instrument_file = None
+                                    if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
+                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
+                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))[0]
+                                    elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
+                                        raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))[0]
+                                        aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
+                                    dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))[0]
+                                    map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 
-                                CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
-                                                                                       tin,
-                                                                                       wsetin,
-                                                                                       os.path.join(path_topo, "ChannelUnits.csv"),
-                                                                                       path_output_visit,
-                                                                                       VisitID,
-                                                                                       site,
-                                                                                       watershed,
-                                                                                       year,
-                                                                                       raw_instrument_file,
-                                                                                       aux_instrument_file,
-                                                                                       dxf_file,
-                                                                                       map_images_folder)
-                            elif len(list_surveygdb) == 0:
-                                CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
-                            else:
-                                printer("   " + site + ": ERROR, does not have correct input data requirements",
-                                        args.outLogFile)
-                            printer("   " + site + ": COMPLETE", args.outLogFile)
-                            # except:
-                                # printer("   " + site + ": EXCEPTION", args.outLogFile)
-                                # tb = sys.exc_info()[2]
-                                # tbinfo = traceback.format_tb(tb)[0]
-                                # printer("{0} \n {1}: {2}".format(tbinfo, sys.exc_type, sys.exc_value), args.outLogFile)
+                                    CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
+                                                                                           tin,
+                                                                                           wsetin,
+                                                                                           os.path.join(path_topo, "ChannelUnits.csv"),
+                                                                                           path_output_visit,
+                                                                                           VisitID,
+                                                                                           site,
+                                                                                           watershed,
+                                                                                           year,
+                                                                                           raw_instrument_file,
+                                                                                           aux_instrument_file,
+                                                                                           dxf_file,
+                                                                                           map_images_folder)
+                                    row = (str(time.asctime()), year, watershed, site, str(VisitID), "Success", "Survey exported as Riverscapes Project.")
+                                    cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                                    conn_log.commit()
+                                    printer("   " + site + ": COMPLETE", args.outLogFile)
+                                elif len(list_surveygdb) == 0:
+                                    CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
+                                    row = (str(time.asctime()), year, watershed, site, str(VisitID), "Success", "Survey exported.")
+                                    cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                                    conn_log.commit()
+                                    printer("   " + site + ": COMPLETE", args.outLogFile)
+                                else:
+                                    printer("   " + site + ": ERROR, does not have correct input data requirements",
+                                            args.outLogFile)
+                                    row = (str(time.asctime()), year, watershed, site, str(VisitID), "Error", "Data Incomplete")
+                                    cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                                    conn_log.commit()
+                            except:
+                                printer("   " + site + ": EXCEPTION", args.outLogFile)
+                                tb = sys.exc_info()[2]
+                                tbinfo = traceback.format_tb(tb)[0]
+                                printer("{0} \n {1}: {2}".format(tbinfo, sys.exc_type, sys.exc_value), args.outLogFile)
+                                traceback.print_exc(file=sys.stdout)
+                                row = (str(time.asctime()), year, watershed, site, str(VisitID), "Exception", traceback.format_exc())
+                                cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                                conn_log.commit()
                         else:
                             printer("   " + str(site) + ": Data Incomplete", args.outLogFile)
+                            row = (str(time.asctime()), year, watershed, site, str(VisitID), "Error", "Data Incomplete")
+                            cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                            conn_log.commit()
                     else:
                         printer("   Visit " + str(VisitID) + " not run due to filter.", args.outLogFile)
+                        row = (str(time.asctime()), year, watershed, site, str(VisitID), "Warning", "Not exported due to filter.")
+                        cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
+                        conn_log.commit()
     printer("Batch Complete", args.outLogFile)
     printer(str(time.asctime()), args.outLogFile)
+
+    conn_log.commit()
+    conn_log.close()
 
 
 def printer(string, logfile=None):  # Output messages to interpreter and log file
