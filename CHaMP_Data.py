@@ -190,6 +190,11 @@ class SurveyGeodatabase():
             if dataset.family == family or family is None:
                 yield dataset
 
+    def get_custom_datasets(self):
+        for dirpath, dirname, gis_dataset in arcpy.da.Walk(self.filename):
+            if gis_dataset not in [dataset.Name for dataset in self.listDatasets]:
+                yield (gis_dataset, path.join(dirpath, gis_dataset))
+
     def getRasterDatasets(self):
         for dataset in self.getDatasets():
             if dataset.Datatype == "Raster":
@@ -343,6 +348,7 @@ class GISTable(GISDataset):
         GISDataset.__init__(self, path.join(datapath, name))
         self.family = family
         self.name = name
+        self.Name = name
         self.sqlitename = name if sqlitename is None else sqlitename
 
     def export_to_xml(self, output_xmlfile):
@@ -385,6 +391,7 @@ class GISRaster(GISDataset):
         GISDataset.__init__(self, filename)
         self.family = None
         self.name = name
+        self.Name = name
 
     def exportToGeoTiff(self, outputPath):
         arcpy.RasterToOtherFormat_conversion(self.filename, outputPath, "TIFF")
@@ -440,7 +447,7 @@ class GISVector(GISDataset):
         name = self.outName if outname is None else outname
         field_mappings = self.getFieldMapping()
         if force_z_enabled:
-            arcpy.env.output_z_flag = True
+            arcpy.env.outputZFlag = "ENABLED"
         arcpy.FeatureClassToFeatureClass_conversion(self.filename, outputPath, name,
                                                     field_mapping=field_mappings)
         return name + ".shp"
@@ -476,6 +483,18 @@ class GISField():
         outFieldMap.outputField = outField
 
         return outFieldMap
+
+    def field_exists(self, filename):
+        return any(item in [f.name for f in arcpy.ListFields(filename)] for item in [self.nameShort, self.nameFull])
+
+    def create_field(self, filename, short_fieldname=False):
+        arcpy.AddField_management(filename, self.nameShort if short_fieldname else self.nameFull, self.type, field_length=self.strlength)
+
+    def get_count(self, filename):
+        return int(arcpy.GetCount_management(filename).getOutput(0))
+
+    def set_value(self, filename, value, short_fieldname=False):
+        arcpy.CalculateField_management(filename, self.nameShort if short_fieldname else self.nameFull, value, "PYTHON_9.3")
 
 
 class FieldDescription(GISField):
@@ -516,59 +535,38 @@ class FieldQualifying(GISField):
 
 
 class FieldLineType(GISField):
-    nameFull = "LineType"
-    nameShort = "LineType"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "LineType", "LineType", "STRING")
 
 
 class FieldChannelUnitNumber(GISField):
-    nameFull = "Unit_Number"
-    nameShort = "UnitNumber"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "Unit_Number", "UnitNumber", "STRING")
 
 
 class FieldVDE(GISField):
-    nameFull = "VDE"
-    nameShort = "VDE"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "VDE", "VDE", "STRING")
 
 
 class FieldHDE(GISField):
-    nameFull = "HDE"
-    nameShort = "HDE"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "HDE", "HDE", "STRING")
 
 
 class FieldPointQuality(GISField):
-    nameFull = "POINT_QUALITY"
-    nameShort = "PQuality"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "POINT_QUALITY", "PQuality", "STRING")
 
 
 class FieldStation(GISField):
-    nameFull = "Station"
-    nameShort = "Station"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "Station", "Station", "STRING")
 
 
 class FieldErrorType(GISField):
-    nameFull = "ErrorType"
-    nameShort = "ErrorType"
-
     def __init__(self):
-        GISField.__init__(self, self.nameFull, self.nameShort, "STRING")
+        GISField.__init__(self, "ErrorType", "ErrorType", "STRING")
 
 
 ## Vector Datasets ##
@@ -675,6 +673,7 @@ class Bankfull_Polygon(GISVector):
         self.family = "stage"
         self.stage = 'bankfull'
         self.stage_type = "extent"
+        self.outName = "BExtent"
         self.addField(self.fieldExtent)
 
 
@@ -692,7 +691,8 @@ class Bankfull_Centerline(GISVector):
         GISVector.__init__(self, GDBProjected, "BankfullCL")
         self.family = "stage"
         self.stage = 'bankfull'
-        self.stage_type = "centerline"
+        self.stage_type = 'centerline'
+        self.outName = "BCenterline"
         self.addField(self.fieldChannel)
         self.addField(self.fieldCLID)
 
@@ -712,6 +712,7 @@ class Bankfull_CrossSections(GISVector):
         self.family = "stage"
         self.stage = 'bankfull'
         self.stage_type = "crosssections"
+        self.outName = "BCrossSections"
         self.addField(self.fieldChannel)
         self.addField(self.fieldIsValid)
 
@@ -731,6 +732,7 @@ class Bankfull_Islands(GISVector):
         self.family = "stage"
         self.stage = 'bankfull'
         self.stage_type = "islands"
+        self.outName = "BIslands"
         self.addField(self.fieldIsValid)
         self.addField(self.fieldQualifying)
 
@@ -907,6 +909,7 @@ class SurveyExtent(GISVector):
         GISVector.__init__(self, FDS, "Survey_Extent")
         self.family = "surveyextents"
 
+
 class Thalweg(GISVector):
     Publish = True
     ExportToGIS = True
@@ -931,15 +934,15 @@ class Wetted_Centerline(GISVector):
     Required = True
     rs_id = "wetted_centerline"
     rs_name = "WCenterline"
-
     fieldChannel = FieldChannel()
     fieldCLID = FieldCLID()
 
     def __init__(self, FDS):
-        GISVector.__init__(self, FDS, "CenterLine")
+        GISVector.__init__(self, FDS, "Centerline")
         self.family = "stage"
         self.stage = 'wetted'
         self.stage_type = "centerline"
+        self.outName = "WCenterline"
         self.addField(self.fieldChannel)
         self.addField(self.fieldCLID)
 
@@ -950,7 +953,6 @@ class Wetted_Extent(GISVector):
     Required = True
     rs_id = "wetted_extent"
     rs_name = "WExtent"
-
     fieldExtentType = FieldExtentType()
 
     def __init__(self, FDS):
@@ -958,6 +960,7 @@ class Wetted_Extent(GISVector):
         self.family = "stage"
         self.stage = 'wetted'
         self.stage_type = "extent"
+        self.outName = "WExtent"
         self.addField(self.fieldExtentType)
 
 
@@ -967,7 +970,6 @@ class Wetted_CrossSections(GISVector):
     Required = True
     rs_id = "wetted_crosssections"
     rs_name = "WCrossSections"
-
     fieldChannel = FieldChannel()
     fieldIsValid = FieldIsValid()
 
@@ -976,6 +978,7 @@ class Wetted_CrossSections(GISVector):
         self.family = "stage"
         self.stage = 'wetted'
         self.stage_type = "crosssections"
+        self.outName = "WCrossSections"
         self.addField(self.fieldChannel)
         self.addField(self.fieldIsValid)
 
@@ -986,7 +989,6 @@ class Wetted_Islands(GISVector):
     Required = True
     rs_id = "wetted_islands"
     rs_name = "WIslands"
-
     fieldIsValid = FieldIsValid()
     fieldQualifying = FieldQualifying()
 
@@ -995,6 +997,7 @@ class Wetted_Islands(GISVector):
         self.family = "stage"
         self.stage = 'wetted'
         self.stage_type = "islands"
+        self.outName = "WIslands"
         self.addField(self.fieldIsValid)
         self.addField(self.fieldQualifying)
 
@@ -1056,6 +1059,7 @@ class WaterDepth(GISRaster):
         self.rs_type = "WaterDepth"
 
     def create(self, DEM, WSEDEM):
+        arcpy.CheckOutExtension("Spatial")
         arcpy.env.extent = DEM
         arcpy.env.snapRaster = DEM
         rasterRawDepth = arcpy.sa.Minus(WSEDEM, DEM)
@@ -1172,6 +1176,7 @@ class ErrSurface(GISRaster):
         self.rs_id = "ErrSurface"
         self.rs_type = "ErrSurface"
 
+
 ## Tables ##
 class TableLog(GISTable):
 
@@ -1179,7 +1184,7 @@ class TableLog(GISTable):
                    "ToolName":"tool",
                    "Status":"status"}
 
-    def export_as_xml(self, outxmlfile, exportMessage=None):
+    def export_as_xml(self, outxmlfile, exportMessages=None):
         root = ET.Element("Messages")
         with arcpy.da.SearchCursor(self.filename, "*") as sc:
             for row in sc:
@@ -1189,13 +1194,13 @@ class TableLog(GISTable):
                         nodeMessage.set(self.dict_fields[field], value)
                     if field == "Message":
                         nodeMessage.text = value
-        if exportMessage:
+        if exportMessages:
             import datetime
-            nodeMessage = ET.SubElement(root, "Message", {"created":str(datetime.datetime.utcnow()),
-                                                          "tool":"CHaMP Survey Data Project Export",
-                                                          "status":"Complete"})
-            nodeMessage.text = exportMessage
-
+            for message in exportMessages:
+                nodeMessage = ET.SubElement(root, "Message", {"created":str(datetime.datetime.utcnow()),
+                                                              "tool":"CHaMP Survey Data Project Export",
+                                                              "status":"Complete"})
+                nodeMessage.text = message
         indent(root)
         tree = ET.ElementTree(root)
         tree.write(outxmlfile, 'utf-8', True)
@@ -1224,7 +1229,6 @@ class TableMapImages(GISTable):
             ET.SubElement(nodeImage, "Context").text = dict_image["Context"] if dict_image.has_key("Context") else ""
             ET.SubElement(nodeImage, "ImageCode").text = dict_image["ImageCode"] if dict_image.has_key("ImageCode") else ""
             ET.SubElement(nodeImage, "Comments").text = dict_image["Comments"] if dict_image.has_key("Comments") else ""
-
         indent(root)
         tree = ET.ElementTree(root)
         tree.write(outxmlfile, 'utf-8', True)
@@ -1232,11 +1236,9 @@ class TableMapImages(GISTable):
 
 ## OtherFiles ##
 class EsriTIN(object):
-
     def __init__(self, tin_path):
         self.path = tin_path
         self.basename = arcpy.Describe(tin_path).basename
-
 
     def copy_tin(self, dest_path):
         arcpy.Copy_management(self.path, dest_path)

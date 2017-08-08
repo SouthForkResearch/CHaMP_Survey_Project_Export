@@ -9,10 +9,9 @@ import time
 import traceback
 import CHaMP_Data
 from Riverscapes import Riverscapes
-import sfr_metadata as Metadata
 
 toolName = "CHaMP Survey Data Project Export"
-toolVersion = "1.0.0"
+toolVersion = "1.0.01"
 
 
 def export_survey_project(survey_gdb,
@@ -33,9 +32,16 @@ def export_survey_project(survey_gdb,
     :param survey_gdb:
     :param topo_tin:
     :param ws_tin:
-    :param benchmarks_csv:
     :param channelunits_csv:
     :param output_folder:
+    :param visitid:
+    :param siteid:
+    :param watershed:
+    :param year:
+    :param raw_inst_file:
+    :param aux_inst_file:
+    :param dxf_file:
+    :param mapimages_folder:
     :return:
     """
 
@@ -46,17 +52,8 @@ def export_survey_project(survey_gdb,
     print "Input SurveyGDB: " + str(survey_gdb)
     print "Output Path: " + str(output_folder)
 
-    ## Prepare Metadata Writer File.
-    outXMLfile = os.path.join(output_folder, "SurveyExportMetadata.xml")
-    mWriter = Metadata.Metadata.MetadataWriter(toolName, toolVersion)
-    mWriter.createRun()
-    mWriter.currentRun.addParameter("Input Survey GDB", survey_gdb)
-    mWriter.currentRun.addParameter("Output Path", output_folder)
-
     SurveyGDB = CHaMP_Data.SurveyGeodatabase(survey_gdb)
-
-    for key, value in SurveyGDB.projection_info().iteritems():
-        mWriter.currentRun.addResult(key, value)
+    log_messages = []
 
     ## OutputWorkspace Prep
     ### http://stackoverflow.com/questions/185936/delete-folder-contents-in-python ###
@@ -83,15 +80,12 @@ def export_survey_project(survey_gdb,
         try:
             if os.path.isfile(file_path):
                 print "Deleting existing file: " + str(file_path)
-                mWriter.currentRun.addMessage("Info", "Deleting existing file: " + str(file_path))
                 os.unlink(file_path)
             elif os.path.isdir(file_path): 
                 shutil.rmtree(file_path)
                 print "Deleting existing directory: " + str(file_path)
-                mWriter.currentRun.addMessage("Info", "Deleting existing directory: " + str(file_path))
         except Exception as e:
             print e
-            mWriter.currentRun.addMessage("Exception",str(e))
 
     # New Project
     rs_project = Riverscapes.Project()
@@ -100,17 +94,23 @@ def export_survey_project(survey_gdb,
     rs_project.projectType = "Topo"
     rs_project.projectVersion = toolVersion
 
-    for name, value in {"SiteID":siteid, "VisitID":visitid, "Watershed":watershed, "Year":year}.iteritems():
+    for name, value in {"Site": siteid,
+                        "Visit": visitid,
+                        "Watershed": watershed,
+                        "Year": year,
+                        "Region":"CRB"}.iteritems():
         rs_project.ProjectMetadata[name] = value
 
     dict_instrument_tag_data = {}
 
     if SurveyGDB.tblSurveyInfo.validateExists():
         for field, value in SurveyGDB.tblSurveyInfo.get_data():
-            if field not in ["InstrumentType", "InstrumentModel"]:
+            if field in ["InstrumentType", "InstrumentModel"]:
+                dict_instrument_tag_data[str(field)] = str(value)
+            elif field in ["Watershed", "Site", "Year", "Visit", "VisitID", "SiteID"]:
                 rs_project.ProjectMetadata["CrewSpecified" + str(field)] = str(value)
             else:
-                dict_instrument_tag_data[str(field)] = str(value)
+                rs_project.ProjectMetadata[str(field)] = str(value)
 
     # Inputs
     inputs_folder = os.path.join(output_folder, "Inputs")
@@ -142,7 +142,7 @@ def export_survey_project(survey_gdb,
 
     if aux_inst_file:
         shutil.copy2(aux_inst_file, inputs_folder)
-        rs_project.addInputDataset("Auxilliary Instrument File",
+        rs_project.addInputDataset("Auxiliary Instrument File",
                                    "AuxFile",
                                    os.path.join("Inputs", os.path.basename(aux_inst_file)),
                                    datasettype="AuxInstrumentFile")
@@ -174,6 +174,7 @@ def export_survey_project(survey_gdb,
         os.makedirs(unprojected_folder)
         unprojected_realization = Riverscapes.SurveyDataRealization(False)
         unprojected_realization.create("Survey Data Unprojected")
+        unprojected_realization.productVersion = toolVersion
 
         for dataset in SurveyGDB.get_survey_datasets(False):
             if dataset.validateExists():
@@ -193,6 +194,7 @@ def export_survey_project(survey_gdb,
         projected_realization = Riverscapes.SurveyDataRealization(True)
         projected_realization.create("Survey Data Projected")
         projected_realization.promoted = True
+        projected_realization.productVersion = toolVersion
 
         for dataset in SurveyGDB.get_survey_datasets(True):
             if dataset.validateExists():
@@ -202,11 +204,12 @@ def export_survey_project(survey_gdb,
                 ds.id = dataset.rs_id
                 # check if z values for breaklines exist.
                 if dataset.rs_name == "Breaklines" and not dataset.test_z():
-                    import zsnap
-                    zsnap(os.path.join(projected_folder, "Breaklines.shp"),[SurveyGDB.Topo_Points.filename,
+                    import ZSnap
+                    ZSnap.polylines(os.path.join(projected_folder, "Breaklines.shp"),[SurveyGDB.Topo_Points.filename,
                                                                             SurveyGDB.EdgeOfWater_Points.filename,
                                                                             SurveyGDB.Stream_Features.filename])
                     ds.metadata["ExportNote"] = "Enabled Z Values on Export"
+                    log_messages.append("Export: Breaklines: Enabled Z Values on Export")
                 projected_realization.datasets[ds.id] = ds
 
         survey_extents_folder = os.path.join(projected_folder, "SurveyExtents")
@@ -235,6 +238,7 @@ def export_survey_project(survey_gdb,
 
     topography_realization = Riverscapes.TopographyRealization("Topography Realization", ds_tin)
     topography_realization.id = "topography"
+    topography_realization.productVersion = toolVersion
 
     stage_wetted_folder = os.path.join(topography_folder, "Stages", "Wetted")
     stage_bankfull_folder = os.path.join(topography_folder, "Stages", "Bankfull")
@@ -244,12 +248,34 @@ def export_survey_project(survey_gdb,
     for dataset in SurveyGDB.getDatasets("stage"):
         if dataset.validateExists():
             ds = Riverscapes.Dataset()
-            if dataset.stage == "wetted":
-                dataset.exportToShapeFile(stage_wetted_folder)
-                ds.create(dataset.rs_name, os.path.join(topography_folder_base, "Stages", "Wetted", dataset.shapefile_basename()))
-            elif dataset.stage == "bankfull":
-                dataset.exportToShapeFile(stage_bankfull_folder)
-                ds.create(dataset.rs_name, os.path.join(topography_folder_base, "Stages", "Bankfull", dataset.shapefile_basename()))
+            stage_folder = stage_wetted_folder if dataset.stage == "wetted" else stage_bankfull_folder
+            stage_folder_base = os.path.join(topography_folder_base, "Stages", "Wetted")if dataset.stage == "wetted" else os.path.join(topography_folder_base, "Stages", "Bankfull")
+            dataset.exportToShapeFile(stage_folder)
+            ds.create(dataset.rs_name, os.path.join(stage_folder_base, dataset.shapefile_basename()))
+            if dataset.Name in ["BankfullCL", "WettedCL", "CenterLine", "Centerline"]:
+                fChannel = CHaMP_Data.FieldChannel()
+                out_shp = os.path.join(stage_folder, dataset.shapefile_basename())
+                if not fChannel.field_exists(out_shp):
+                    fChannel.create_field(out_shp, True)
+                    log_messages.append("Export: Added Channel Field to " + dataset.shapefile_basename())
+                    if fChannel.get_count(out_shp) == 1:
+                        fChannel.set_value(out_shp, '"Main"', True)
+                        log_messages.append("Export: Set one (1) channel type to 'Main' in " + dataset.shapefile_basename())
+                    else:
+                        log_messages.append("Export: Unable to find one (1) main channel in " + dataset.shapefile_basename())
+
+            if dataset.Name in ["WaterExtent", "Bankfull"]:
+                fExtentType = CHaMP_Data.FieldExtentType()
+                out_shp = os.path.join(stage_folder, dataset.shapefile_basename())
+                if not fExtentType.field_exists(out_shp):
+                    fExtentType.create_field(out_shp, True)
+                    log_messages.append("Export: Added ExtentType Field to " + dataset.shapefile_basename())
+                    if fExtentType.get_count(out_shp) == 1:
+                        fExtentType.set_value(out_shp, '"Channel"')
+                        log_messages.append("Export: Set one (1) extent type to 'Channel' in " + dataset.shapefile_basename())
+                    else:
+                        log_messages.append("Export: Unable to find one (1) main channel feature in " + dataset.shapefile_basename())
+
             ds.id = dataset.rs_id
             ds.attributes["stage"] = dataset.stage
             ds.attributes["type"] = dataset.stage_type
@@ -265,13 +291,14 @@ def export_survey_project(survey_gdb,
                 for key, value in dataset.get_extents().iteritems():
                     ds.metadata[key] = str(value)
             topography_realization.topography[ds.id] = ds
-        elif dataset.rs_name == "WaterDepth":
-            dataset.create(SurveyGDB.DEM, SurveyGDB.WSEDEM)
+        elif dataset.rs_name == "Water Depth":
+            dataset.create(SurveyGDB.DEM.filename, SurveyGDB.WSEDEM.filename)
             ds = Riverscapes.Dataset()
             dataset.export(topography_folder)
             ds.create(dataset.rs_name, os.path.join(topography_folder_base, dataset.basename()), dataset.rs_type)
             ds.id = dataset.rs_id
             topography_realization.topography[ds.id] = ds
+            log_messages.append("Export: Added WaterDepth raster on Export.")
 
     WSETIN = CHaMP_Data.EsriTIN(ws_tin)
     WSETIN.copy_tin(os.path.join(topography_folder, WSETIN.basename))
@@ -296,7 +323,7 @@ def export_survey_project(survey_gdb,
     rs_project.addRealization(topography_realization, topography_realization.id)
     rs_project.writeProjectXML()
 
-    if os.path.exists(mapimages_folder):
+    if mapimages_folder and os.path.exists(mapimages_folder):
         mapimages_project_folder = os.path.join(output_folder, "MapImages")
         os.makedirs(mapimages_project_folder)
         import glob
@@ -314,19 +341,16 @@ def export_survey_project(survey_gdb,
             dir_util.copy_tree(reports_folder, os.path.join(output_folder, "Reports"))
 
     if SurveyGDB.tblLog.validateExists():
-        str_export = "Exported by {} version {}".format(toolName, toolVersion)
-        SurveyGDB.tblLog.export_as_xml(os.path.join(output_folder, "log.xml"), str_export )
+        log_messages.append("Exported by {} version {}".format(toolName, toolVersion))
+        SurveyGDB.tblLog.export_as_xml(os.path.join(output_folder, "log.xml"), log_messages)
+
+    # todo: Do something with custom datasets
+    # for dataset in SurveyGDB.get_custom_datasets():
+    #     pass
 
     totaltime = ( time.time() - start )
     print "Total Time: {0}s".format(totaltime)
     print "Export Complete  at " + str(time.asctime())
-
-    # Results     
-    mWriter.currentRun.addResult("last_log_timestamp", "") # Proxy for the latest change
-
-    # Write Metadata File
-    mWriter.finalizeRun()
-    mWriter.writeMetadataFile(outXMLfile)
             
     return
 
@@ -362,10 +386,6 @@ def main():
         print "ERROR: '{}' is not a folder".format(args.outputprojectfolder)
         parser.print_help()
         exit(1)
-
-    # Initiate the log file
-    #log = Logger("Program")
-    #log.setup(logPath=args.logfile, verbose=args.verbose)
 
     try:
         export_survey_project(args.surveygdb,
