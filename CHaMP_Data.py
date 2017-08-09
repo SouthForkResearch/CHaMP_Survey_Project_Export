@@ -1147,6 +1147,10 @@ class AssocD50(GISRaster):
     def __init__(self, path):
         GISRaster.__init__(self, path + "\\" + self.name, self.name)
         self.family = "surfaces"
+        self.family = "surfaces"
+        self.rs_name = "AssocD50"
+        self.rs_id = "D50"
+        self.rs_type = "D50"
 
 
 class AssocRough(GISRaster):

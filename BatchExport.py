@@ -45,23 +45,28 @@ def run(args):
                         if sitesFilter is None or site in sitesFilter:
                             path_site = os.path.join(path_watershed, site)
                             for visit in [item for item in os.listdir(path_site) if os.path.isdir(os.path.join(path_site, item))]:
-                                VisitID = visit.lstrip("VISIT_")
-                                if visitsFilter is None or VisitID in visitsFilter:
+                                visit_id = visit.lstrip("VISIT_")
+                                if visitsFilter is None or visit_id in visitsFilter:
+                                    #Gather Datasets
                                     path_topo = os.path.join(path_site, visit, "Topo")
-                                    list_surveygdb = glob.glob(os.path.join(path_topo, "*.gdb"))
-                                    list_tin = glob.glob(os.path.join(path_topo, "tin*"))
-                                    list_wsetin = glob.glob(os.path.join(path_topo, "wsetin*"))
-                                    if len(list_surveygdb) == 1:
-                                        path_output_visit = os.path.join(path_topo, args.output_folder_name) if path_output is None \
-                                                                else os.path.join(path_output, year, watershed, site,
-                                                                str(visit), "Topo", args.out_folder_name)
-                                        if not os.path.isdir(path_output_visit):
-                                            os.makedirs(path_output_visit)
-                                        try:
-                                            printer("   " + site + ": START", args.outLogFile)
-                                            if args.project and all(len(item) == 1 for item in [list_surveygdb, list_tin, list_wsetin]):
-                                                tin = list_tin[0]
-                                                wsetin = list_wsetin[0]
+                                    datasets = {}
+                                    datasets["SurveyGDB"] = glob.glob(os.path.join(path_topo, "*.gdb"))
+                                    datasets["TopoTIN"] = glob.glob(os.path.join(path_topo, "tin*"))
+                                    datasets["WSETIN"] = glob.glob(os.path.join(path_topo, "wsetin*"))
+                                    datasets["InstrumentFiles_JOB_MDF"] = glob.glob(os.path.join(path_topo, "*.job")) + glob.glob(os.path.join(path_topo, "*.mjf"))
+                                    datasets["InstrumentFiles_RAW"] = glob.glob(os.path.join(path_topo, "*.raw"))
+                                    datasets["ChannelUnitCSV"] = glob.glob(os.path.join(path_topo, "ChannelUnits.csv"))
+                                    datasets["DXF_File"] =glob.glob(os.path.join(path_topo, "*.dxf"))
+                                    try:
+                                        if all(len(item) == 1 for item in datasets.itervalues()):
+                                            path_output_visit = os.path.join(path_topo, args.output_folder_name) if path_output is None \
+                                                                    else os.path.join(path_output, year, watershed, site,
+                                                                    str(visit), "Topo", args.out_folder_name)
+                                            if not os.path.isdir(path_output_visit):
+                                                os.makedirs(path_output_visit)
+
+                                            printer("   {}: START".format(site), args.outLogFile)
+                                            if args.project: # TODO add overwrite protection?
                                                 raw_instrument_file = None
                                                 aux_instrument_file = None
                                                 if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
@@ -70,55 +75,53 @@ def run(args):
                                                 elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
                                                     raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))[0]
                                                     aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
-                                                dxf_file = glob.glob(os.path.join(path_topo, "*.dxf"))[0]
                                                 map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 
-                                                CHaMP_Survey_Data_Project_Export.export_survey_project(list_surveygdb[0],
-                                                                                                       tin,
-                                                                                                       wsetin,
-                                                                                                       os.path.join(path_topo, "ChannelUnits.csv"),
+                                                CHaMP_Survey_Data_Project_Export.export_survey_project(datasets["SurveyGDB"][0],
+                                                                                                       datasets["TopoTIN"][0],
+                                                                                                       datasets["WSETIN"][0],
+                                                                                                       datasets["ChannelUnitCSV"][0],
                                                                                                        path_output_visit,
-                                                                                                       VisitID,
+                                                                                                       visit_id,
                                                                                                        site,
                                                                                                        watershed,
                                                                                                        year,
                                                                                                        raw_instrument_file,
                                                                                                        aux_instrument_file,
-                                                                                                       dxf_file,
+                                                                                                       datasets["DXF_File"][0],
                                                                                                        map_images_folder)
-                                                row = (str(time.asctime()), year, watershed, site, str(VisitID), "Success", "Survey exported as Riverscapes Project.")
+
+                                                row = (str(time.asctime()), year, watershed, site, str(visit_id), "Success", "Survey exported as Riverscapes Project.")
                                                 cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                                 conn_log.commit()
                                                 printer("   " + site + ": COMPLETE", args.outLogFile)
-                                            elif len(list_surveygdb) == 0:
-                                                CHaMP_Survey_Data_Export_Tool.main(list_surveygdb[0], path_output_visit)
-                                                row = (str(time.asctime()), year, watershed, site, str(VisitID), "Success", "Survey exported.")
+                                            elif len(datasets["SurveyGDB"]) == 0:
+                                                CHaMP_Survey_Data_Export_Tool.main(datasets["SurveyGDB"][0], path_output_visit)
+                                                row = (str(time.asctime()), year, watershed, site, str(visit_id), "Success", "Survey exported.")
                                                 cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                                 conn_log.commit()
                                                 printer("   " + site + ": COMPLETE", args.outLogFile)
-                                            else:
-                                                printer("   " + site + ": ERROR, does not have correct input data requirements",
-                                                        args.outLogFile)
-                                                row = (str(time.asctime()), year, watershed, site, str(VisitID), "Error", "Data Incomplete")
-                                                cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
-                                                conn_log.commit()
-                                        except:
-                                            printer("   " + site + ": EXCEPTION", args.outLogFile)
-                                            tb = sys.exc_info()[2]
-                                            tbinfo = traceback.format_tb(tb)[0]
-                                            printer("{0} \n {1}: {2}".format(tbinfo, sys.exc_type, sys.exc_value), args.outLogFile)
-                                            traceback.print_exc(file=sys.stdout)
-                                            row = (str(time.asctime()), year, watershed, site, str(VisitID), "Exception", traceback.format_exc())
+                                        else:
+                                            printer("   {}: ERROR, does not have correct input data requirements".format(site),
+                                                    args.outLogFile)
+                                            missing_datsets = [item.key() for item in datasets if len(item.value()) != 1]
+                                            row = (str(time.asctime()), year, watershed, site, str(visit_id), "Error", "Incomplete Visit Data: " + str(missing_datsets))
                                             cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                             conn_log.commit()
-                                    else:
-                                        printer("   " + str(site) + ": Data Incomplete", args.outLogFile)
-                                        row = (str(time.asctime()), year, watershed, site, str(VisitID), "Error", "Data Incomplete")
+                                    except:
+                                        printer("   {}: EXCEPTION".format(site), args.outLogFile)
+                                        tb = sys.exc_info()[2]
+                                        tb_info = traceback.format_tb(tb)[0]
+                                        printer("{0} \n {1}: {2}".format(tb_info, sys.exc_type, sys.exc_value),
+                                                args.outLogFile)
+                                        traceback.print_exc(file=sys.stdout)
+                                        row = (str(time.asctime()), year, watershed, site, str(visit_id), "Exception",
+                                               traceback.format_exc())
                                         cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                         conn_log.commit()
                                 else:
-                                    printer("   Visit " + str(VisitID) + " not run due to filter.", args.outLogFile)
-                                    row = (str(time.asctime()), year, watershed, site, str(VisitID), "Warning", "Not exported due to filter.")
+                                    printer("   Visit " + str(visit_id) + " not run due to filter.", args.outLogFile)
+                                    row = (str(time.asctime()), year, watershed, site, str(visit_id), "Warning", "Not exported due to filter.")
                                     cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                     conn_log.commit()
     printer("Batch Complete", args.outLogFile)
