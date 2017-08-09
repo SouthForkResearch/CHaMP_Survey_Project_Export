@@ -104,7 +104,7 @@ def run(args):
                                         else:
                                             printer("   {}: ERROR, does not have correct input data requirements".format(site),
                                                     args.outLogFile)
-                                            missing_datsets = [item.key() for item in datasets if len(item.value()) != 1]
+                                            missing_datsets = [key for key, value in datasets.iteritems() if len(value) != 1]
                                             row = (str(time.asctime()), year, watershed, site, str(visit_id), "Error", "Incomplete Visit Data: " + str(missing_datsets))
                                             cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                             conn_log.commit()
