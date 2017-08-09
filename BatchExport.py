@@ -36,17 +36,17 @@ def run(args):
 
     # Loop through source directory
     for year in [item for item in os.listdir(args.path_input) if os.path.isdir(os.path.join(args.path_input, item))]:
-        if year in yearsFilter or yearsFilter is None:
+        if yearsFilter is None or year in yearsFilter:
             path_year = os.path.join(args.path_input, year)
             for watershed in [item for item in os.listdir(path_year) if os.path.isdir(os.path.join(path_year, item))]:
-                if watershed in watershedsFilter or watershedsFilter is None:
+                if watershedsFilter is None or watershed in watershedsFilter:
                     path_watershed = os.path.join(path_year, watershed)
                     for site in [item for item in os.listdir(path_watershed) if os.path.isdir(os.path.join(path_watershed, item))]:
-                        if site in sitesFilter or sitesFilter is None:
+                        if sitesFilter is None or site in sitesFilter:
                             path_site = os.path.join(path_watershed, site)
                             for visit in [item for item in os.listdir(path_site) if os.path.isdir(os.path.join(path_site, item))]:
                                 VisitID = visit.lstrip("VISIT_")
-                                if VisitID in visitsFilter or visitsFilter is None :
+                                if visitsFilter is None or VisitID in visitsFilter:
                                     path_topo = os.path.join(path_site, visit, "Topo")
                                     list_surveygdb = glob.glob(os.path.join(path_topo, "*.gdb"))
                                     list_tin = glob.glob(os.path.join(path_topo, "tin*"))
