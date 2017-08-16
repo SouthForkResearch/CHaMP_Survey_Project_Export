@@ -11,7 +11,7 @@ import CHaMP_Data
 from Riverscapes import Riverscapes
 
 toolName = "CHaMP Survey Data Project Export"
-toolVersion = "1.0.01"
+toolVersion = "1.0.02"
 
 
 def export_survey_project(survey_gdb,
@@ -154,11 +154,15 @@ def export_survey_project(survey_gdb,
                                    os.path.join("Inputs", raw_points_shp))
 
     if dxf_file:
-        shutil.copy2(dxf_file, inputs_folder)
         dxf_dataset = Riverscapes.Dataset()
         dxf_dataset.create("Breaklines", os.path.join("Inputs", os.path.basename(dxf_file)))
         dxf_dataset.id = "BreaklineDXF"
-        dxf_dataset.metadata["FeatureClassName"] = "Polyline"
+        if os.path.splitext(dxf_file)[1].lower() == ".dxf":
+            shutil.copy2(dxf_file, inputs_folder)
+            dxf_dataset.metadata["FeatureClassName"] = "Polyline"
+        else:
+            CHaMP_Data.copy_shapefile(dxf_file, os.path.join(inputs_folder, os.path.basename(dxf_file)))
+            dxf_dataset.metadata["FeatureClassType"] = "Shapefile"
         rs_project.InputDatasets["BreaklineDXF"] = dxf_dataset
 
     if channelunits_csv:
@@ -340,13 +344,13 @@ def export_survey_project(survey_gdb,
             os.makedirs(os.path.join(output_folder, "Reports"))
             dir_util.copy_tree(reports_folder, os.path.join(output_folder, "Reports"))
 
-    if SurveyGDB.tblLog.validateExists():
-        log_messages.append("Exported by {} version {}".format(toolName, toolVersion))
-        SurveyGDB.tblLog.export_as_xml(os.path.join(output_folder, "log.xml"), log_messages)
+    # Do something with custom datasets
+    custom_datasets = SurveyGDB.export_custom_datasets(os.path.join(output_folder, "CustomData"))
+    for custom_dataset in custom_datasets:
+        log_messages.append("Exported Custom Dataset: {}".format(custom_dataset))
 
-    # todo: Do something with custom datasets
-    # for dataset in SurveyGDB.get_custom_datasets():
-    #     pass
+    log_messages.append("Exported by {} version {}".format(toolName, toolVersion))
+    SurveyGDB.tblLog.export_as_xml(os.path.join(output_folder, "log.xml"), log_messages)
 
     totaltime = ( time.time() - start )
     print "Total Time: {0}s".format(totaltime)

@@ -50,13 +50,24 @@ def run(args):
                                     #Gather Datasets
                                     path_topo = os.path.join(path_site, visit, "Topo")
                                     datasets = {}
+                                    opt_datasets = {}
+                                    inst_datasets = {}
                                     datasets["SurveyGDB"] = glob.glob(os.path.join(path_topo, "*.gdb"))
                                     datasets["TopoTIN"] = glob.glob(os.path.join(path_topo, "tin*"))
                                     datasets["WSETIN"] = glob.glob(os.path.join(path_topo, "wsetin*"))
-                                    datasets["InstrumentFiles_JOB_MDF"] = glob.glob(os.path.join(path_topo, "*.job")) + glob.glob(os.path.join(path_topo, "*.mjf"))
-                                    datasets["InstrumentFiles_RAW"] = glob.glob(os.path.join(path_topo, "*.raw"))
+                                    inst_datasets["InstrumentFiles_JOB"] = glob.glob(os.path.join(path_topo, "*.job")) + \
+                                                                          glob.glob(os.path.join(path_topo, "*/*.job"))
+                                    inst_datasets["InstrumentFiles_MJF"] = glob.glob(os.path.join(path_topo, "*.mjf")) + \
+                                                                          glob.glob(os.path.join(path_topo, "*/*.mjf"))
+                                    opt_datasets["InstrumentFiles_RAW"] = glob.glob(os.path.join(path_topo, "*.raw")) + \
+                                                                      glob.glob(os.path.join(path_topo, "*/*.raw"))
                                     datasets["ChannelUnitCSV"] = glob.glob(os.path.join(path_topo, "ChannelUnits.csv"))
-                                    datasets["DXF_File"] =glob.glob(os.path.join(path_topo, "*.dxf"))
+                                    opt_datasets["DXF_File"] = glob.glob(os.path.join(path_topo, "*.dxf")) + \
+                                                           glob.glob(os.path.join(path_topo, "*/*.dxf")) + \
+                                                           glob.glob(os.path.join(path_topo, "*.shp")) + \
+                                                           glob.glob(os.path.join(path_topo, "*/*.shp"))
+                                    opt_datasets["InstrumentFiles_JOBorMJF"] = inst_datasets["InstrumentFiles_MJF"] + \
+                                                                               inst_datasets["InstrumentFiles_JOB"]
                                     try:
                                         if all(len(item) == 1 for item in datasets.itervalues()):
                                             path_output_visit = os.path.join(path_topo, args.output_folder_name) if path_output is None \
@@ -64,17 +75,17 @@ def run(args):
                                                                     str(visit), "Topo", args.out_folder_name)
                                             if not os.path.isdir(path_output_visit):
                                                 os.makedirs(path_output_visit)
-
                                             printer("   {}: START".format(site), args.outLogFile)
                                             if args.project: # TODO add overwrite protection?
                                                 raw_instrument_file = None
                                                 aux_instrument_file = None
-                                                if len(glob.glob(os.path.join(path_topo, "*.job"))) <> 0:
-                                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
-                                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.job"))[0]
-                                                elif len(glob.glob(os.path.join(path_topo, "*.mjf"))) <> 0:
-                                                    raw_instrument_file = glob.glob(os.path.join(path_topo, "*.mjf"))[0]
-                                                    aux_instrument_file = glob.glob(os.path.join(path_topo, "*.raw"))[0]
+                                                if len(inst_datasets["InstrumentFiles_JOB"]) == 1:
+                                                    raw_instrument_file = opt_datasets["InstrumentFiles_RAW"][0]
+                                                    aux_instrument_file = inst_datasets["InstrumentFiles_JOB"][0]
+                                                elif len(inst_datasets["InstrumentFiles_MJF"]) == 1:
+                                                    raw_instrument_file = inst_datasets["InstrumentFiles_MJF"][0]
+                                                    aux_instrument_file = opt_datasets["InstrumentFiles_RAW"][0]
+                                                dxf_file = opt_datasets["DXF_File"][0] if len(opt_datasets["DXF_File"]) == 1 else None
                                                 map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 
                                                 CHaMP_Survey_Data_Project_Export.export_survey_project(datasets["SurveyGDB"][0],
@@ -88,10 +99,10 @@ def run(args):
                                                                                                        year,
                                                                                                        raw_instrument_file,
                                                                                                        aux_instrument_file,
-                                                                                                       datasets["DXF_File"][0],
+                                                                                                       dxf_file,
                                                                                                        map_images_folder)
-
-                                                row = (str(time.asctime()), year, watershed, site, str(visit_id), "Success", "Survey exported as Riverscapes Project.")
+                                                message = "Survey exported as Riverscapes Project. Optional Datasets Missing or Extra {}".format([key for key, value in opt_datasets.iteritems() if len(value) != 1]) if any(len(value) != 1 for value in opt_datasets.itervalues()) else "Survey exported as Riverscapes Project."
+                                                row = (str(time.asctime()), year, watershed, site, str(visit_id), "Success", message)
                                                 cursor.execute("INSERT INTO SurveyExports VALUES (?,?,?,?,?,?,?)", row)
                                                 conn_log.commit()
                                                 printer("   " + site + ": COMPLETE", args.outLogFile)

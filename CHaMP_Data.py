@@ -13,7 +13,7 @@
 
 # # Import Modules # #
 import arcpy
-from os import path
+from os import path, makedirs
 import xml.etree.ElementTree as ET
 
 
@@ -191,9 +191,10 @@ class SurveyGeodatabase():
                 yield dataset
 
     def get_custom_datasets(self):
-        for dirpath, dirname, gis_dataset in arcpy.da.Walk(self.filename):
-            if gis_dataset not in [dataset.Name for dataset in self.listDatasets]:
-                yield (gis_dataset, path.join(dirpath, gis_dataset))
+        for dirpath, dirname, gis_datasets in arcpy.da.Walk(self.filename):
+            for gis_dataset in gis_datasets:
+                if gis_dataset not in [dataset.Name for dataset in self.listDatasets]:
+                    yield path.join(dirpath, gis_dataset)
 
     def getRasterDatasets(self):
         for dataset in self.getDatasets():
@@ -250,6 +251,62 @@ class SurveyGeodatabase():
 
     def has_unprojected(self):
         return arcpy.Exists(self.unprojected)
+
+    def export_custom_datasets(self, dest_folder):
+        list_datasets = []
+        root = ET.Element("CustomData")
+        for dataset in self.get_custom_datasets():
+            if not path.exists(dest_folder): # make dir only if one or more custom dataset exists
+                makedirs(dest_folder)
+            desc = arcpy.Describe(dataset)
+            msg = ""
+            if desc.dataType == "FeatureClass":
+                if int(arcpy.GetCount_management(dataset).getOutput(0)) > 0:
+                    try:
+                        arcpy.FeatureClassToFeatureClass_conversion(dataset, dest_folder, desc.baseName)
+                        exported = "True"
+                        list_datasets.append(dataset)
+                    except arcpy.ExecuteError:
+                        exported = "False"
+                        msg = arcpy.GetMessages()
+                else:
+                    exported = "False"
+                    msg = "No Features found"
+            elif desc.dataType == "Table":
+                if int(arcpy.GetCount_management(dataset).getOutput(0)) > 0:
+                    try:
+                        arcpy.TableToTable_conversion(dataset, dest_folder, "{}.{}".format(desc.baseName, "dbf"))
+                        exported = "True"
+                        list_datasets.append(dataset)
+                    except arcpy.ExecuteError:
+                        exported = "False"
+                        msg = arcpy.GetMessages()
+                else:
+                    exported = "False"
+                    msg = "No Records in Table"
+            elif desc.dataType == "RasterDataset":
+                try:
+                    arcpy.RasterToOtherFormat_conversion(dataset, dest_folder, "TIFF")
+                    exported = "True"
+                    list_datasets.append(dataset)
+                except arcpy.ExecuteError:
+                    exported = "False"
+                    msg = arcpy.GetMessages()
+            else:
+                exported = "False"
+                msg = "Unsupported dataType for export"
+
+            nodeDataset = ET.SubElement(root, desc.dataType)
+            nodeDataset.set("exported", str(exported))
+            ET.SubElement(nodeDataset, "Name").text = desc.baseName
+            ET.SubElement(nodeDataset, "Source").text = dataset
+            if msg:
+                ET.SubElement(nodeDataset, "Message").text = str(msg)
+        if list_datasets:
+            indent(root)
+            tree = ET.ElementTree(root)
+            tree.write(path.join(dest_folder, "CustomData.xml"), 'utf-8', True)
+        return list_datasets
 
     def exportTopoTINDXF(self, outFolder):
         """exports dxf file (and SHP files) containing tin components of topo tin in same folder as gdb"""
@@ -362,10 +419,12 @@ class GISTable(GISDataset):
     def export_to_sqlite(self, sqlite_db):
         import sqlite3
         if self.validateExists():
-            fields = [f.name for f in arcpy.ListFields(self.filename) if f.name not in ["OBJECTID", "ZminProj", "ZmaxProj", "ZrangeProj"]]
-            with arcpy.da.SearchCursor(self.filename, fields) as sc:
-                l_data = [tuple(row) for row in sc]
-                with sqlite3.connect(sqlite_db) as conn:
+            with sqlite3.connect(sqlite_db) as conn:
+                cursor = conn.execute('select * from {}'.format(self.sqlitename))
+                allowed_fields = zip(*cursor.description)[0]
+                fields = [f.name for f in arcpy.ListFields(self.filename) if f.name in allowed_fields]
+                with arcpy.da.SearchCursor(self.filename, fields) as sc:
+                    l_data = [tuple(row) for row in sc]
                     conn.executemany("INSERT INTO " + self.sqlitename + " (" +
                                      ",".join(["{}"]*len(fields)).format(*['"' + f + '"' for f in sc.fields]) + ") VALUES (" +
                                      ",".join(["?"]*len(fields)) + ")", l_data)
@@ -434,7 +493,7 @@ class GISVector(GISDataset):
     def getFieldMapping(self):
         fieldMappings = arcpy.FieldMappings()
         for field in arcpy.ListFields(self.filename):
-            if field.name not in ["Shape", "shape"]:
+            if field.name.lower() not in ["shape"]:
                 fm = arcpy.FieldMap()
                 fm.addInputField(self.filename, field.name)
                 outfield = fm.outputField
@@ -631,6 +690,7 @@ class Topo_Points(GISVector):
         self.addField(GISField("ROD_HEIGHT", "ROD_HEIGHT", "DOUBLE"))
         self.addField(GISField("EVENT_ID", "EVENT_ID", "DOUBLE"))
 
+
 class QaQcRawPoints(GISVector):
     Publish = True
     ExportToGIS = True
@@ -647,7 +707,7 @@ class QaQcRawPoints(GISVector):
     fieldPointNumber = FieldPointNumber()
 
     def __init__(self, FDS, projected):
-        GISVector.__init__(self, FDS, "QaQcRawPoints", projected)
+        GISVector.__init__(self, FDS, "QaQc_RawPoints", projected)
         self.family = None
         self.addField(self.fieldVDE)
         self.addField(self.fieldHDE)
@@ -819,6 +879,7 @@ class EdgeOfWater_Points(GISVector):
         self.addField(self.fieldStation)
         self.addField(GISField("ROD_HEIGHT", "ROD_HEIGHT", "DOUBLE"))
         self.addField(GISField("EVENT_ID", "EVENT_ID", "DOUBLE"))
+
 
 class Error_Lines(GISVector):
     Publish = True
@@ -1060,12 +1121,14 @@ class WaterDepth(GISRaster):
 
     def create(self, DEM, WSEDEM):
         arcpy.CheckOutExtension("Spatial")
-        arcpy.env.extent = DEM
+        arcpy.env.extent = arcpy.Describe(DEM).Extent
         arcpy.env.snapRaster = DEM
         rasterRawDepth = arcpy.sa.Minus(WSEDEM, DEM)
         rasterPositiveMaskBool = arcpy.sa.GreaterThan(rasterRawDepth, 0)
         rasterDepth = arcpy.sa.Abs(arcpy.sa.Times(rasterRawDepth, rasterPositiveMaskBool))
         rasterDepth.save(self.filename)
+        arcpy.ClearEnvironment("extent")
+        arcpy.ClearEnvironment("snapRaster")
 
 
 class WSEDEM(GISRaster):
@@ -1190,14 +1253,15 @@ class TableLog(GISTable):
 
     def export_as_xml(self, outxmlfile, exportMessages=None):
         root = ET.Element("Messages")
-        with arcpy.da.SearchCursor(self.filename, "*") as sc:
-            for row in sc:
-                nodeMessage = ET.SubElement(root, "Message")
-                for value, field in zip(row, sc.fields):
-                    if field in self.dict_fields.keys():
-                        nodeMessage.set(self.dict_fields[field], value)
-                    if field == "Message":
-                        nodeMessage.text = value
+        if self.validateExists():
+            with arcpy.da.SearchCursor(self.filename, "*") as sc:
+                for row in sc:
+                    nodeMessage = ET.SubElement(root, "Message")
+                    for value, field in zip(row, sc.fields):
+                        if field in self.dict_fields.keys():
+                            nodeMessage.set(self.dict_fields[field], str(value))
+                        if field == "Message":
+                            nodeMessage.text = str(value)
         if exportMessages:
             import datetime
             for message in exportMessages:
@@ -1217,7 +1281,8 @@ class TableMapImages(GISTable):
         fields = ["FilePath", "Title", "Context", "Comments", "TIMESTAMP", "Purpose", "ImageCode"]
         with arcpy.da.SearchCursor(self.filename, fields) as sc:
             for row in sc:
-                dict_images[row[0].lstrip(r'..\\')] = dict(zip(fields, row))
+                if row[0]:
+                    dict_images[row[0].lstrip(r'..\\')] = dict(zip(fields, row))
         return dict_images
 
     def export_mapimages_xml(self, outxmlfile, mapimages=None):
@@ -1274,3 +1339,7 @@ def indent(elem, level=0, more_sibs=False):
             elem.tail = i
             if more_sibs:
                 elem.tail += '  '
+
+
+def copy_shapefile(inshp, outshp):
+    arcpy.CopyFeatures_management(inshp, outshp)
