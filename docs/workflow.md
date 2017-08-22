@@ -21,7 +21,7 @@ This is the proposed workflow for exporting champ surveys as Riverscapes Project
 4. Run `python APIDownload_byType.py` with the following parameters:
    1. output folder
    2. `--filetypes Topo` The script will download the correct set of Topo files for the visit.
-   3. filter by `--visits`, `--years`, `--watersheds` and/or `--sites`. 
+   3. filter by `--visits`, `--years`, [`--watersheds`](filters) and/or `--sites`. 
       > Warning: if any of these filters are not specified, all visits will be downloaded!
    4. `--logfile` path to the output log
    5. `--unzip` flag to unzip the contents to a folder named "Topo" within each visit.
