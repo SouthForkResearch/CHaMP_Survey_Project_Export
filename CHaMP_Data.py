@@ -493,12 +493,12 @@ class GISVector(GISDataset):
     def getFieldMapping(self):
         fieldMappings = arcpy.FieldMappings()
         for field in arcpy.ListFields(self.filename):
-            if field.name.lower() not in ["shape"]:
+            if field.name.lower() not in ["shape", "oid", "objectid"]:
                 fm = arcpy.FieldMap()
                 fm.addInputField(self.filename, field.name)
                 outfield = fm.outputField
                 outfield.name = self.dict_field_names[field.name] if field.name in self.dict_field_names.keys() else field.name
-                outfield.type = "LONG" if field.type == "SHORT" else field.type
+                outfield.type = "Integer" if field.type == "SmallInteger" else field.type
                 fm.outputField = outfield
                 fieldMappings.addFieldMap(fm)
         return fieldMappings
