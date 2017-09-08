@@ -69,7 +69,7 @@ def run(args):
                                     opt_datasets["InstrumentFiles_JOBorMJF"] = inst_datasets["InstrumentFiles_MJF"] + \
                                                                                inst_datasets["InstrumentFiles_JOB"]
                                     try:
-                                        if all(len(item) == 1 for item in datasets.itervalues()):
+                                        if all(len(item) == 1 for item in datasets.itervalues()) and len(opt_datasets["InstrumentFiles_RAW"]) == 1:
                                             path_output_visit = os.path.join(path_topo, args.output_folder_name) if path_output is None \
                                                                     else os.path.join(path_output, year, watershed, site,
                                                                     str(visit), "Topo", args.out_folder_name)
@@ -80,11 +80,11 @@ def run(args):
                                                 raw_instrument_file = None
                                                 aux_instrument_file = None
                                                 if len(inst_datasets["InstrumentFiles_JOB"]) == 1:
-                                                    raw_instrument_file = opt_datasets["InstrumentFiles_RAW"][0]
+                                                    raw_instrument_file = opt_datasets["InstrumentFiles_RAW"][0] if len(opt_datasets["InstrumentFiles_RAW"]) == 1 else None
                                                     aux_instrument_file = inst_datasets["InstrumentFiles_JOB"][0]
                                                 elif len(inst_datasets["InstrumentFiles_MJF"]) == 1:
                                                     raw_instrument_file = inst_datasets["InstrumentFiles_MJF"][0]
-                                                    aux_instrument_file = opt_datasets["InstrumentFiles_RAW"][0]
+                                                    aux_instrument_file = opt_datasets["InstrumentFiles_RAW"][0] if len(opt_datasets["InstrumentFiles_RAW"]) == 1 else None
                                                 dxf_file = opt_datasets["DXF_File"][0] if len(opt_datasets["DXF_File"]) == 1 else None
                                                 map_images_folder = os.path.join(path_topo, "MapImages") if os.path.exists(os.path.join(path_topo, "MapImages")) else None
 

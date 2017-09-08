@@ -193,7 +193,7 @@ class SurveyGeodatabase():
     def get_custom_datasets(self):
         for dirpath, dirname, gis_datasets in arcpy.da.Walk(self.filename):
             for gis_dataset in gis_datasets:
-                if gis_dataset not in [dataset.Name for dataset in self.listDatasets]:
+                if gis_dataset not in [dataset.Name for dataset in self.listDatasets] and dirpath is not self.filename:
                     yield path.join(dirpath, gis_dataset)
 
     def getRasterDatasets(self):
@@ -498,6 +498,7 @@ class GISVector(GISDataset):
                 fm.addInputField(self.filename, field.name)
                 outfield = fm.outputField
                 outfield.name = self.dict_field_names[field.name] if field.name in self.dict_field_names.keys() else field.name
+                outfield.type = "LONG" if field.type == "SHORT" else field.type
                 fm.outputField = outfield
                 fieldMappings.addFieldMap(fm)
         return fieldMappings
@@ -1261,7 +1262,7 @@ class TableLog(GISTable):
                         if field in self.dict_fields.keys():
                             nodeMessage.set(self.dict_fields[field], str(value))
                         if field == "Message":
-                            nodeMessage.text = str(value)
+                            nodeMessage.text = str(value).encode('utf-8')
         if exportMessages:
             import datetime
             for message in exportMessages:
