@@ -45,6 +45,9 @@ def export_survey_project(survey_gdb,
     :return:
     """
 
+    ws_tin = None if ws_tin.lower() == "none" else ws_tin
+    channelunits_csv = None if channelunits_csv.lower() == "none" else channelunits_csv
+    
     reload(CHaMP_Data)
     reload(Riverscapes)
     start = time.time()
@@ -131,21 +134,25 @@ def export_survey_project(survey_gdb,
                                datasettype="SurveyQualityDB")
 
     if raw_inst_file:
-        shutil.copy2(raw_inst_file, inputs_folder)
-        ds_raw = Riverscapes.Dataset()
-        ds_raw.create("Instrument File", os.path.join("Inputs", os.path.basename(raw_inst_file)), type="InstrumentFile")
-        ds_raw.id = "RawFile"
-        ds_raw.metadata["Type"] = "RawFile"
-        for name, value in dict_instrument_tag_data.iteritems():
-            ds_raw.metadata[str(name)] = str(value)
-        rs_project.InputDatasets["Instrument File"] = ds_raw
+        for rfile in raw_inst_file.split(","):
+            shutil.copy2(rfile, inputs_folder)
+            ds_raw = Riverscapes.Dataset()
+            ds_raw.create("Instrument File", os.path.join("Inputs", os.path.basename(rfile)), type="InstrumentFile")
+            ds_raw.id = "RawFile"
+            ds_raw.metadata["Type"] = "RawFile"
+            for name, value in dict_instrument_tag_data.iteritems():
+                ds_raw.metadata[str(name)] = str(value)
+            rs_project.InputDatasets["Instrument File"] = ds_raw
 
     if aux_inst_file:
-        shutil.copy2(aux_inst_file, inputs_folder)
-        rs_project.addInputDataset("Auxiliary Instrument File",
-                                   "AuxFile",
-                                   os.path.join("Inputs", os.path.basename(aux_inst_file)),
-                                   datasettype="AuxInstrumentFile")
+        i_aux = 0
+        for afile in aux_inst_file.split(","):
+            i_aux = i_aux + 1
+            shutil.copy2(afile, inputs_folder)
+            ds_aux = Riverscapes.Dataset()
+            ds_aux.create("Auxiliary Instrument File", os.path.join("Inputs", os.path.basename(afile)), type="AuxInstrumentFile")
+            ds_aux.id = "AuxFile" + str(i_aux)
+            rs_project.InputDatasets["Auxiliary Instrument File " + str(i_aux)] = ds_aux
 
     # if SurveyGDB.fcQaQcRawPoints.exists:
     if SurveyGDB.fcQaQcRawPoints.validateExists():
@@ -295,7 +302,7 @@ def export_survey_project(survey_gdb,
                 for key, value in dataset.get_extents().iteritems():
                     ds.metadata[key] = str(value)
             topography_realization.topography[ds.id] = ds
-        elif dataset.rs_name == "Water Depth":
+        elif dataset.rs_name == "Water Depth" and SurveyGDB.WSEDEM.validateExists():
             dataset.create(SurveyGDB.DEM.filename, SurveyGDB.WSEDEM.filename)
             ds = Riverscapes.Dataset()
             dataset.export(topography_folder)
@@ -304,15 +311,16 @@ def export_survey_project(survey_gdb,
             topography_realization.topography[ds.id] = ds
             log_messages.append("Export: Added WaterDepth raster on Export.")
 
-    WSETIN = CHaMP_Data.EsriTIN(ws_tin)
-    WSETIN.copy_tin(os.path.join(topography_folder, WSETIN.basename))
-    ds_wsetin = Riverscapes.Dataset()
+    if ws_tin:
+        WSETIN = CHaMP_Data.EsriTIN(ws_tin)
+        WSETIN.copy_tin(os.path.join(topography_folder, WSETIN.basename))
+        ds_wsetin = Riverscapes.Dataset()
 
-    ds_wsetin.create("Water Surface TIN", os.path.join(topography_folder_base, WSETIN.basename), "WaterSurfaceTIN")
-    ds_wsetin.id = "WaterSurfaceTIN"
-    ds_wsetin.attributes["active"] = "true"
+        ds_wsetin.create("Water Surface TIN", os.path.join(topography_folder_base, WSETIN.basename), "WaterSurfaceTIN")
+        ds_wsetin.id = "WaterSurfaceTIN"
+        ds_wsetin.attributes["active"] = "true"
 
-    topography_realization.topography[ds_wsetin.id] = ds_wsetin
+        topography_realization.topography[ds_wsetin.id] = ds_wsetin
 
     assoc_surfaces_folder = os.path.join(topography_folder, "AssocSurfaces")
     os.makedirs(assoc_surfaces_folder)
@@ -365,8 +373,8 @@ def main():
 
     parser.add_argument('surveygdb', help='Path to Survey Geodatabase', type=str)
     parser.add_argument('topoTIN', help='Path to topo TIN', type=str)
-    parser.add_argument('wseTIN', help="Path to Water Surface TIN", type=str)
-    parser.add_argument('channelunitscsv', help='Path to channelunit csv file', type=str)
+    parser.add_argument('wseTIN', help="Path to Water Surface TIN. Type None if wsetin does not exist for visit.", type=str)
+    parser.add_argument('channelunitscsv', help='Path to channelunit csv file. Type None if csv does not exist for visit.', type=str)
     parser.add_argument('outputprojectfolder', help="folder to store new project")
     parser.add_argument('visitid', help='the visit id for the survey as string', type=str)
     parser.add_argument('site', help='the site id/name for the survey', type=str)
@@ -390,7 +398,7 @@ def main():
         print "ERROR: '{}' is not a folder".format(args.outputprojectfolder)
         parser.print_help()
         exit(1)
-
+    
     try:
         export_survey_project(args.surveygdb,
                               args.topoTIN,
