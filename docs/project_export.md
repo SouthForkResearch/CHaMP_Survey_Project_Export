@@ -2,6 +2,8 @@
 title: Export Survey as Riverscapes Project
 ---
 
+The CHaMP Survey Export tool was created for a one-time use workflow to transform historical champ topographic surveys from ESRI proprietary formats (File GDB) into Riverscapes-structured open source formats (shapefiles, geotiff). This tool uses a class-based dataset 'library' to find data components in the historic survey and manages the appropriate changes required (i.e. field name, field types) for the conversion. A few minor geoprocessing steps are included to add missing datasets (i.e. water depth) or erroneous data (i.e. Breaklines vertices not matching topo point z-values). Finally, the data are stored in a Riverscapes structured file format and a project.rs.xml file is written to capture this structure.
+
 ## Usage
 
 ### Command Line
