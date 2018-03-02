@@ -1,5 +1,5 @@
 ---
-title: CHaMP Survey Data Export
+title: "CHaMP Survey Data Export"
 ---
 
 The CHaMP Survey Data Exports are a set of utilities to export CHaMP Survey Data in ESRI-proprietary formats to open source GIS data formats as:
